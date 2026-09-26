@@ -1,10 +1,11 @@
-import { db } from "./index";
-import { permissions } from "./schema";
-import { INITIAL_PERMISSIONS } from "@/lib/permissions";
 import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
+
+import { db } from "./index";
+import { permissions } from "./schema";
+import { INITIAL_PERMISSIONS } from "@/lib/permissions";
 
 export async function seedPermissions() {
   console.log("Seeding initial permissions...");
