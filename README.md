@@ -1,36 +1,169 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ghuru CRM - SaaS Foundation
 
-## Getting Started
+A standalone, multi-tenant, customizable SaaS CRM platform built from the ground up.
 
-First, run the development server:
+## Product Architecture
+
+Ghuru CRM is designed with a strict **multi-tenant hierarchy**:
+
+```text
+Organization
+    ↓
+  Users
+    ↓
+  Roles
+    ↓
+Permissions
+```
+
+Every organization-owned record is strictly associated with a tenant (`organizationId`), and isolation is enforced server-side.
+
+### Core Architectural Principles
+
+1. **Multi-tenant from day one**: Built with tenant boundaries at the database and server layer. No single-tenant assumptions.
+2. **Server-side Tenant Isolation**: Tenant context and access verification are always verified on the server via `requireOrganization()` and `requirePermission()`. No client-only filtering.
+3. **Role-Based Access Control (RBAC)**: Fine-grained permissions per organization. The creator automatically receives the **Organization Admin** role with full administrative privileges.
+4. **Clean Decoupled Domain Architecture**: Generic SaaS core with zero customer-specific hardcoding. External customers and integrations integrate cleanly via versioned REST APIs (`/api/v1/...`).
+
+---
+
+## Technology Stack
+
+* **Framework**: Next.js 16 (App Router)
+* **Language**: TypeScript (Strict Mode)
+* **Styling & UI**: Tailwind CSS v4 & shadcn/ui
+* **Database**: Neon PostgreSQL
+* **ORM**: Drizzle ORM + Drizzle Kit
+* **Authentication**: Better Auth
+* **Validation**: Zod
+* **Testing**: Vitest + PGlite
+
+---
+
+## Project Structure
+
+```text
+src/
+├── app/
+│   ├── (auth)/                  # Public auth route group
+│   │   ├── login/               # Sign In page
+│   │   └── signup/              # Sign Up page
+│   ├── (dashboard)/             # Protected tenant application shell
+│   │   ├── dashboard/           # Main tenant dashboard
+│   │   └── settings/            # Settings foundation
+│   │       ├── organization/    # Organization details & slug
+│   │       ├── users/           # User & membership management
+│   │       └── roles/           # Custom roles & permissions
+│   ├── onboarding/              # Organization creation onboarding
+│   └── api/
+│       ├── auth/[...all]/       # Better Auth API endpoints
+│       └── v1/                  # Versioned REST API foundation
+│           ├── organizations/   # Organizations API
+│           ├── users/           # Tenant members API
+│           ├── roles/           # Roles and RBAC API
+│           └── permissions/     # Available system permissions
+├── components/
+│   ├── ui/                      # shadcn/ui base components
+│   ├── auth/                    # LoginForm, SignupForm
+│   ├── layout/                  # Sidebar, Topbar, UserMenu, OrgSwitcher
+│   ├── organization/            # CreateOrgForm, OrgSettingsForm
+│   ├── users/                   # UsersTable, AddUserDialog, EditRoleDialog
+│   └── roles/                   # RolesList, CreateRoleDialog, EditRoleDialog
+├── db/
+│   ├── index.ts                 # Neon PostgreSQL Drizzle connection
+│   ├── migrate.ts               # Programmatic migration runner
+│   ├── seed.ts                  # Idempotent permissions seeder
+│   └── schema/                  # Drizzle ORM database schemas
+│       ├── users.ts             # users, sessions, accounts, verifications
+│       ├── organizations.ts     # organizations, organization_members
+│       └── rbac.ts              # roles, permissions, role_permissions
+├── lib/
+│   ├── auth/                    # Better Auth server and client setup
+│   ├── context/                 # Server-side tenant isolation & RBAC
+│   ├── services/                # Organization, User, and Role domain services
+│   ├── validations/             # Zod validation schemas
+│   └── errors.ts                # Application error classes
+└── config/
+    └── navigation.ts            # Dynamic navigation structure
+```
+
+---
+
+## Local Development Setup
+
+### 1. Clone & Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in your Neon PostgreSQL database URL and Better Auth secret:
+
+```env
+DATABASE_URL="postgresql://neondb_owner:password@ep-sample.neon.tech/neondb?sslmode=require"
+BETTER_AUTH_SECRET="your-32-character-secret-key-goes-here-min-length"
+BETTER_AUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+### 3. Database Migrations
+
+Generate migrations from schema changes:
+```bash
+npm run db:generate
+```
+
+Apply migrations to your Neon database:
+```bash
+npm run db:migrate
+```
+
+Seed initial system permissions:
+```bash
+npm run db:seed
+```
+
+Launch Drizzle Studio for visual database inspection:
+```bash
+npm run db:studio
+```
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Verification & Testing
 
-## Learn More
+Run unit & integration test suite:
+```bash
+npm test
+```
 
-To learn more about Next.js, take a look at the following resources:
+Run TypeScript strict type-check:
+```bash
+npm run type-check
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Run ESLint:
+```bash
+npm run lint
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Build for production:
+```bash
+npm run build
+```
