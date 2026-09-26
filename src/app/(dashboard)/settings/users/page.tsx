@@ -10,8 +10,10 @@ export const metadata = {
 
 export default async function UsersSettingsPage() {
   const ctx = await requirePermission("users.view");
-  const members = await getOrganizationMembers(ctx.organization.id);
-  const roles = await getOrganizationRoles(ctx.organization.id);
+  const [members, roles] = await Promise.all([
+    getOrganizationMembers(ctx.organization.id),
+    getOrganizationRoles(ctx.organization.id),
+  ]);
 
   return (
     <div className="space-y-6">

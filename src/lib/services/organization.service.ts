@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { db } from "@/db";
 import { DbClient } from "@/db/types";
 import {
@@ -140,29 +141,52 @@ export interface UserOrganizationMembership {
   createdAt: Date;
 }
 
-export async function getUserOrganizations(
-  userId: string,
-  dbInstance: DbClient = db as DbClient
-): Promise<UserOrganizationMembership[]> {
-  const userMemberships = await dbInstance
-    .select({
-      membershipId: organizationMembers.id,
-      roleId: organizationMembers.roleId,
-      roleName: roles.name,
-      organizationId: organizations.id,
-      organizationName: organizations.name,
-      organizationSlug: organizations.slug,
-      createdAt: organizations.createdAt,
-    })
-    .from(organizationMembers)
-    .innerJoin(
-      organizations,
-      eq(organizationMembers.organizationId, organizations.id)
-    )
-    .innerJoin(roles, eq(organizationMembers.roleId, roles.id))
-    .where(eq(organizationMembers.userId, userId));
+export const getUserOrganizations = cache(
+  async (
+    userId: string,
+    dbInstance: DbClient = db as DbClient
+  ): Promise<UserOrganizationMembership[]> => {
+    const userMemberships = await dbInstance
+      .select({
+        membershipId: organizationMembers.id,
+        roleId: organizationMembers.roleId,
+        roleName: roles.name,
+        organizationId: organizations.id,
+        organizationName: organizations.name,
+        organizationSlug: organizations.slug,
+        createdAt: organizations.createdAt,
+      })
+      .from(organizationMembers)
+      .innerJoin(
+        organizations,
+        eq(organizationMembers.organizationId, organizations.id)
+      )
+      .innerJoin(roles, eq(organizationMembers.roleId, roles.id))
+      .where(eq(organizationMembers.userId, userId));
 
-  return userMemberships;
+    return userMemberships;
+  }
+);
+
+export async function getOrganizationCounts(
+  organizationId: string,
+  dbInstance: DbClient = db as DbClient
+) {
+  const [membersCount, rolesCount] = await Promise.all([
+    dbInstance
+      .select({ id: organizationMembers.id })
+      .from(organizationMembers)
+      .where(eq(organizationMembers.organizationId, organizationId)),
+    dbInstance
+      .select({ id: roles.id })
+      .from(roles)
+      .where(eq(roles.organizationId, organizationId)),
+  ]);
+
+  return {
+    totalUsers: membersCount.length,
+    activeRoles: rolesCount.length,
+  };
 }
 
 export async function updateOrganization(

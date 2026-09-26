@@ -8,14 +8,6 @@ import { formatZodError } from "@/lib/validations/helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Loader2, CheckCircle2, ShieldAlert } from "lucide-react";
 
 interface OrgSettingsFormProps {
@@ -34,6 +26,7 @@ export function OrgSettingsForm({
   canUpdate,
 }: OrgSettingsFormProps) {
   const router = useRouter();
+  const [activeSubTab, setActiveSubTab] = useState<"general" | "branding" | "features">("general");
   const [name, setName] = useState(organization.name);
   const [slug, setSlug] = useState(organization.slug);
   const [error, setError] = useState<string | null>(null);
@@ -77,93 +70,156 @@ export function OrgSettingsForm({
   }
 
   return (
-    <Card className="max-w-2xl border-border">
-      <CardHeader>
-        <CardTitle className="text-xl">Organization Details</CardTitle>
-        <CardDescription>
-          View and configure your organization profile and slug identifier.
-        </CardDescription>
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          {!canUpdate && (
-            <div className="flex items-center gap-2 p-3 text-sm text-amber-700 bg-amber-50 rounded-md border border-amber-200">
-              <ShieldAlert className="h-4 w-4 shrink-0" />
-              <span>You have read-only access. You need the &apos;organization.update&apos; permission to modify these settings.</span>
-            </div>
-          )}
+    <div className="space-y-6 max-w-4xl">
+      {/* Sub-tabs: General, Branding, Features */}
+      <div className="flex items-center gap-3 border-b border-slate-200 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("general")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            activeSubTab === "general"
+              ? "bg-blue-50 text-blue-600"
+              : "text-slate-500 hover:text-slate-800"
+          }`}
+        >
+          General
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("branding")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            activeSubTab === "branding"
+              ? "bg-blue-50 text-blue-600"
+              : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <span>Branding</span>
+          <span className="text-[9px] uppercase tracking-wider bg-slate-100 text-slate-500 px-1.5 py-0.2 rounded font-medium">
+            Future
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("features")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            activeSubTab === "features"
+              ? "bg-blue-50 text-blue-600"
+              : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <span>Features</span>
+          <span className="text-[9px] uppercase tracking-wider bg-slate-100 text-slate-500 px-1.5 py-0.2 rounded font-medium">
+            Future
+          </span>
+        </button>
+      </div>
 
-          {error && (
-            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="flex items-center gap-2 p-3 text-sm text-green-700 bg-green-50 rounded-md border border-green-200">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
-              <span>{success}</span>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="orgId">Organization ID</Label>
-            <Input
-              id="orgId"
-              value={organization.id}
-              disabled
-              className="bg-muted font-mono text-xs"
-            />
-            <p className="text-xs text-muted-foreground">
-              Unique internal tenant identifier.
+      {activeSubTab === "general" && (
+        <div className="bg-white rounded-xl border border-slate-200/80 p-6 sm:p-8 shadow-xs">
+          <div className="mb-6">
+            <h2 className="text-base font-bold text-slate-900">
+              General Information
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Update your workspace identity and unique public slug.
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Organization Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={loading || !canUpdate}
-              required
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {!canUpdate && (
+              <div className="flex items-center gap-2.5 p-3.5 text-xs text-amber-700 bg-amber-50 rounded-xl border border-amber-200">
+                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" />
+                <span>
+                  You have read-only access. You need the &apos;organization.update&apos; permission to modify these settings.
+                </span>
+              </div>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="slug">Organization Slug</Label>
-            <Input
-              id="slug"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value.toLowerCase())}
-              disabled={loading || !canUpdate}
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              Used in vanity URLs and tenant identification. Must be unique across all tenants.
-            </p>
-          </div>
+            {error && (
+              <div className="p-3.5 text-xs text-red-600 bg-red-50 rounded-xl border border-red-200">
+                {error}
+              </div>
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="createdAt">Created Date</Label>
-            <Input
-              id="createdAt"
-              value={new Date(organization.createdAt).toLocaleString()}
-              disabled
-              className="bg-muted text-xs"
-            />
-          </div>
-        </CardContent>
+            {success && (
+              <div className="flex items-center gap-2 p-3.5 text-xs text-emerald-700 bg-emerald-50 rounded-xl border border-emerald-200">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                <span>{success}</span>
+              </div>
+            )}
 
-        {canUpdate && (
-          <CardFooter className="flex justify-end">
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
-          </CardFooter>
-        )}
-      </form>
-    </Card>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-semibold text-slate-700">
+                  Organization Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={loading || !canUpdate}
+                  required
+                  className="h-11 rounded-lg border-slate-200 bg-white px-3.5 text-sm placeholder:text-slate-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/20"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="slug" className="text-xs font-semibold text-slate-700">
+                  Organization Slug <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="slug"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                  disabled={loading || !canUpdate}
+                  required
+                  className="h-11 rounded-lg border-slate-200 bg-white px-3.5 font-mono text-xs placeholder:text-slate-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/20"
+                />
+              </div>
+            </div>
+
+            {/* Technical Metadata section */}
+            <div className="pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-500">
+              <div>
+                <span className="font-medium text-slate-400 block">Internal Tenant ID</span>
+                <span className="font-mono text-[11px] text-slate-700 mt-0.5 block break-all">
+                  {organization.id}
+                </span>
+              </div>
+              <div>
+                <span className="font-medium text-slate-400 block">Created At</span>
+                <span className="text-slate-700 mt-0.5 block">
+                  {new Date(organization.createdAt).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {canUpdate && (
+              <div className="pt-4 flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-blue-600/30"
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </div>
+            )}
+          </form>
+        </div>
+      )}
+
+      {activeSubTab !== "general" && (
+        <div className="bg-white rounded-xl border border-slate-200/80 p-8 text-center shadow-xs">
+          <p className="text-sm font-semibold text-slate-800">
+            {activeSubTab === "branding" ? "Custom Branding" : "Modular Feature Toggles"}
+          </p>
+          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            This module architecture is reserved for future milestones (custom logos, colors, and CRM feature toggles).
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

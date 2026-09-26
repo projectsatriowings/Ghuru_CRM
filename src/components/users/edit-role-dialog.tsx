@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -20,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle, Shield } from "lucide-react";
 
 interface RoleOption {
   id: string;
@@ -80,54 +81,106 @@ export function EditRoleDialog({
       setLoading(false);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred"
+      );
       setLoading(false);
     }
   }
 
   if (!member) return null;
 
+  const initials = member.name
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Change Member Role</DialogTitle>
-          <DialogDescription>
-            Update the role and permissions for {member.name} ({member.email}).
+      <DialogContent className="sm:max-w-md p-6 rounded-2xl shadow-xl border-slate-200">
+        <DialogHeader className="space-y-1.5 pb-2">
+          <DialogTitle className="text-lg font-bold text-slate-900">
+            Change Member Role
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-500">
+            Select a new access role and permission level for this member.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Member Profile Preview Card */}
+        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+          <Avatar className="h-10 w-10 ring-1 ring-slate-200">
+            <AvatarFallback className="bg-blue-50 text-blue-700 font-semibold text-xs">
+              {initials || "U"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-slate-900 text-sm truncate">
+              {member.name}
+            </span>
+            <span className="text-xs text-slate-500 truncate">
+              {member.email}
+            </span>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           {error && (
-            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20">
-              {error}
+            <div className="flex items-center gap-2 p-3 text-xs text-red-700 bg-red-50 rounded-xl border border-red-200">
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+              <span>{error}</span>
             </div>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="editRoleSelect">Role</Label>
-            <Select value={selectedRoleId} onValueChange={(val: string | null) => setSelectedRoleId(val || "")}>
-              <SelectTrigger id="editRoleSelect" className="w-full">
+
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="editRoleSelect"
+              className="text-xs font-semibold uppercase tracking-wider text-slate-600 flex items-center gap-1.5"
+            >
+              <Shield className="h-3.5 w-3.5 text-blue-600" />
+              <span>Assigned Access Role</span>
+            </Label>
+            <Select
+              value={selectedRoleId}
+              onValueChange={(val: string | null) =>
+                setSelectedRoleId(val || "")
+              }
+            >
+              <SelectTrigger
+                id="editRoleSelect"
+                className="w-full h-10 text-xs bg-slate-50/50 border-slate-200 focus-visible:ring-1 focus-visible:ring-blue-600"
+              >
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl shadow-lg border-slate-200">
                 {roles.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
+                  <SelectItem key={r.id} value={r.id} className="text-xs">
                     {r.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          <DialogFooter className="pt-2">
+
+          <DialogFooter className="pt-4 gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={loading}
+              className="h-9 px-4 text-xs font-medium text-slate-700 border-slate-200 hover:bg-slate-50 rounded-lg"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-9 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
+            >
+              {loading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
               Save Role
             </Button>
           </DialogFooter>

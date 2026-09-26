@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers, cookies } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
@@ -47,7 +48,7 @@ export interface OrganizationContext {
   hasPermission: (key: string) => boolean;
 }
 
-export async function requireAuth() {
+export const requireAuth = cache(async () => {
   const reqHeaders = await headers();
   const session = await auth.api.getSession({
     headers: reqHeaders,
@@ -61,9 +62,9 @@ export async function requireAuth() {
     user: session.user,
     session: session.session,
   };
-}
+});
 
-export async function getActiveOrgIdFromRequest(): Promise<string | undefined> {
+export const getActiveOrgIdFromRequest = cache(async (): Promise<string | undefined> => {
   const reqHeaders = await headers();
   const orgHeader = reqHeaders.get("x-organization-id");
   if (orgHeader) return orgHeader;
@@ -73,114 +74,114 @@ export async function getActiveOrgIdFromRequest(): Promise<string | undefined> {
   if (orgCookie?.value) return orgCookie.value;
 
   return undefined;
-}
+});
 
-export async function requireOrganization(
-  explicitOrgId?: string
-): Promise<OrganizationContext> {
-  const { user, session } = await requireAuth();
+export const requireOrganization = cache(
+  async (explicitOrgId?: string): Promise<OrganizationContext> => {
+    const { user, session } = await requireAuth();
 
-  let targetOrgId = explicitOrgId;
+    let targetOrgId = explicitOrgId;
 
-  if (!targetOrgId) {
-    targetOrgId = await getActiveOrgIdFromRequest();
-  }
+    if (!targetOrgId) {
+      targetOrgId = await getActiveOrgIdFromRequest();
+    }
 
-  // If no explicit or cookie org specified, pick user's first organization
-  if (!targetOrgId) {
-    const [firstMembership] = await db
-      .select({ organizationId: organizationMembers.organizationId })
+    // If no explicit or cookie org specified, pick user's first organization
+    if (!targetOrgId) {
+      const [firstMembership] = await db
+        .select({ organizationId: organizationMembers.organizationId })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, user.id))
+        .limit(1);
+
+      if (!firstMembership) {
+        throw new NotFoundError(
+          "No organization membership found. Please create or join an organization."
+        );
+      }
+      targetOrgId = firstMembership.organizationId;
+    }
+
+    // Server-side tenant isolation check:
+    // Must verify that the user is an active member of targetOrgId
+    const [membership] = await db
+      .select({
+        id: organizationMembers.id,
+        organizationId: organizationMembers.organizationId,
+        userId: organizationMembers.userId,
+        roleId: organizationMembers.roleId,
+        roleName: roles.name,
+        orgName: organizations.name,
+        orgSlug: organizations.slug,
+        orgCreatedAt: organizations.createdAt,
+        orgUpdatedAt: organizations.updatedAt,
+      })
       .from(organizationMembers)
-      .where(eq(organizationMembers.userId, user.id))
+      .innerJoin(
+        organizations,
+        eq(organizationMembers.organizationId, organizations.id)
+      )
+      .innerJoin(roles, eq(organizationMembers.roleId, roles.id))
+      .where(
+        and(
+          eq(organizationMembers.organizationId, targetOrgId),
+          eq(organizationMembers.userId, user.id)
+        )
+      )
       .limit(1);
 
-    if (!firstMembership) {
-      throw new NotFoundError(
-        "No organization membership found. Please create or join an organization."
+    if (!membership) {
+      throw new ForbiddenError(
+        "Access denied: You are not a member of this organization."
       );
     }
-    targetOrgId = firstMembership.organizationId;
-  }
 
-  // Server-side tenant isolation check:
-  // Must verify that the user is an active member of targetOrgId
-  const [membership] = await db
-    .select({
-      id: organizationMembers.id,
-      organizationId: organizationMembers.organizationId,
-      userId: organizationMembers.userId,
-      roleId: organizationMembers.roleId,
-      roleName: roles.name,
-      orgName: organizations.name,
-      orgSlug: organizations.slug,
-      orgCreatedAt: organizations.createdAt,
-      orgUpdatedAt: organizations.updatedAt,
-    })
-    .from(organizationMembers)
-    .innerJoin(
-      organizations,
-      eq(organizationMembers.organizationId, organizations.id)
-    )
-    .innerJoin(roles, eq(organizationMembers.roleId, roles.id))
-    .where(
-      and(
-        eq(organizationMembers.organizationId, targetOrgId),
-        eq(organizationMembers.userId, user.id)
+    // Fetch all permissions assigned to this user's role
+    const rolePerms = await db
+      .select({ key: permissions.key })
+      .from(rolePermissions)
+      .innerJoin(
+        permissions,
+        eq(rolePermissions.permissionId, permissions.id)
       )
-    )
-    .limit(1);
+      .where(eq(rolePermissions.roleId, membership.roleId));
 
-  if (!membership) {
-    throw new ForbiddenError(
-      "Access denied: You are not a member of this organization."
-    );
+    const permKeys = rolePerms.map((rp) => rp.key);
+    const permSet = new Set(permKeys);
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+      },
+      session: {
+        id: session.id,
+        expiresAt: session.expiresAt,
+        token: session.token,
+      },
+      organization: {
+        id: membership.organizationId,
+        name: membership.orgName,
+        slug: membership.orgSlug,
+        createdAt: membership.orgCreatedAt,
+        updatedAt: membership.orgUpdatedAt,
+      },
+      membership: {
+        id: membership.id,
+        roleId: membership.roleId,
+      },
+      role: {
+        id: membership.roleId,
+        name: membership.roleName,
+      },
+      permissionKeys: permKeys,
+      permissions: permSet,
+      hasPermission: (key: string) => permSet.has(key),
+    };
   }
-
-  // Fetch all permissions assigned to this user's role
-  const rolePerms = await db
-    .select({ key: permissions.key })
-    .from(rolePermissions)
-    .innerJoin(
-      permissions,
-      eq(rolePermissions.permissionId, permissions.id)
-    )
-    .where(eq(rolePermissions.roleId, membership.roleId));
-
-  const permKeys = rolePerms.map((rp) => rp.key);
-  const permSet = new Set(permKeys);
-
-  return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      image: user.image,
-    },
-    session: {
-      id: session.id,
-      expiresAt: session.expiresAt,
-      token: session.token,
-    },
-    organization: {
-      id: membership.organizationId,
-      name: membership.orgName,
-      slug: membership.orgSlug,
-      createdAt: membership.orgCreatedAt,
-      updatedAt: membership.orgUpdatedAt,
-    },
-    membership: {
-      id: membership.id,
-      roleId: membership.roleId,
-    },
-    role: {
-      id: membership.roleId,
-      name: membership.roleName,
-    },
-    permissionKeys: permKeys,
-    permissions: permSet,
-    hasPermission: (key: string) => permSet.has(key),
-  };
-}
+);
 
 export async function requirePermission(
   permissionKey: string,

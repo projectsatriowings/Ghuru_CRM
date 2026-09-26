@@ -15,6 +15,23 @@ import {
 } from "@/lib/errors";
 import { DEFAULT_ORG_ADMIN_ROLE } from "@/lib/permissions";
 
+let _cachedSystemPermissions: { id: string; key: string; description: string }[] | null = null;
+
+export async function getAllSystemPermissions(dbInstance: DbClient = db as DbClient) {
+  if (
+    dbInstance === (db as DbClient) &&
+    _cachedSystemPermissions &&
+    _cachedSystemPermissions.length > 0
+  ) {
+    return _cachedSystemPermissions;
+  }
+  const perms = await dbInstance.select().from(permissions);
+  if (dbInstance === (db as DbClient)) {
+    _cachedSystemPermissions = perms;
+  }
+  return perms;
+}
+
 export async function getOrganizationRoles(
   organizationId: string,
   dbInstance: DbClient = db as DbClient
@@ -24,44 +41,57 @@ export async function getOrganizationRoles(
     .from(roles)
     .where(eq(roles.organizationId, organizationId));
 
-  const rolesWithPermissions = await Promise.all(
-    orgRoles.map(async (role) => {
-      const assignedPerms = await dbInstance
-        .select({
-          id: permissions.id,
-          key: permissions.key,
-          description: permissions.description,
-        })
-        .from(rolePermissions)
-        .innerJoin(
-          permissions,
-          eq(rolePermissions.permissionId, permissions.id)
+  if (orgRoles.length === 0) {
+    return [];
+  }
+
+  const roleIds = orgRoles.map((r) => r.id);
+
+  const [allAssignedPerms, members] = await Promise.all([
+    dbInstance
+      .select({
+        roleId: rolePermissions.roleId,
+        id: permissions.id,
+        key: permissions.key,
+        description: permissions.description,
+      })
+      .from(rolePermissions)
+      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .where(inArray(rolePermissions.roleId, roleIds)),
+
+    dbInstance
+      .select({
+        roleId: organizationMembers.roleId,
+      })
+      .from(organizationMembers)
+      .where(
+        and(
+          eq(organizationMembers.organizationId, organizationId),
+          inArray(organizationMembers.roleId, roleIds)
         )
-        .where(eq(rolePermissions.roleId, role.id));
+      ),
+  ]);
 
-      const memberCount = await dbInstance
-        .select({ id: organizationMembers.id })
-        .from(organizationMembers)
-        .where(
-          and(
-            eq(organizationMembers.organizationId, organizationId),
-            eq(organizationMembers.roleId, role.id)
-          )
-        );
+  const permsByRole = new Map<
+    string,
+    { id: string; key: string; description: string }[]
+  >();
+  for (const p of allAssignedPerms) {
+    const list = permsByRole.get(p.roleId) || [];
+    list.push({ id: p.id, key: p.key, description: p.description });
+    permsByRole.set(p.roleId, list);
+  }
 
-      return {
-        ...role,
-        permissions: assignedPerms,
-        memberCount: memberCount.length,
-      };
-    })
-  );
+  const countsByRole = new Map<string, number>();
+  for (const m of members) {
+    countsByRole.set(m.roleId, (countsByRole.get(m.roleId) || 0) + 1);
+  }
 
-  return rolesWithPermissions;
-}
-
-export async function getAllSystemPermissions(dbInstance: DbClient = db as DbClient) {
-  return await dbInstance.select().from(permissions);
+  return orgRoles.map((role) => ({
+    ...role,
+    permissions: permsByRole.get(role.id) || [],
+    memberCount: countsByRole.get(role.id) || 0,
+  }));
 }
 
 export interface CreateRoleParams {

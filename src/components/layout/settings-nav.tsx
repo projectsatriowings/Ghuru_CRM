@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Building2, Users, Shield } from "lucide-react";
+import { Building2, Users, ShieldCheck } from "lucide-react";
 
 interface SettingsNavProps {
   permissions: string[];
@@ -21,22 +21,22 @@ export function SettingsNav({ permissions }: SettingsNavProps) {
       permission: "organization.view",
     },
     {
-      title: "Users & Members",
+      title: "Users",
       href: "/settings/users",
       icon: Users,
       permission: "users.view",
     },
     {
-      title: "Roles & Permissions",
+      title: "Roles",
       href: "/settings/roles",
-      icon: Shield,
+      icon: ShieldCheck,
       permission: "roles.view",
     },
   ];
 
   return (
-    <div className="border-b border-border">
-      <nav className="flex space-x-6 overflow-x-auto" aria-label="Settings Tabs">
+    <div className="border-b border-slate-200">
+      <nav className="flex space-x-8" aria-label="Settings Navigation">
         {tabs.map((tab) => {
           if (tab.permission && !permSet.has(tab.permission)) {
             return null;
@@ -48,15 +48,19 @@ export function SettingsNav({ permissions }: SettingsNavProps) {
             <Link
               key={tab.href}
               href={tab.href}
+              prefetch={true}
               className={cn(
-                "flex items-center gap-2 py-3 px-1 border-b-2 text-sm font-medium whitespace-nowrap transition-colors",
+                "flex items-center gap-2 pb-3.5 pt-1 text-sm font-semibold transition-all relative",
                 isActive
-                  ? "border-primary text-primary font-semibold"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                  ? "text-blue-600"
+                  : "text-slate-500 hover:text-slate-800"
               )}
             >
-              <tab.icon className="h-4 w-4" />
+              <tab.icon className="h-4 w-4 shrink-0" />
               <span>{tab.title}</span>
+              {isActive && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+              )}
             </Link>
           );
         })}
