@@ -22,11 +22,16 @@ export interface CreateOrganizationParams {
   userId: string;
 }
 
+let cachedSystemPermissions: Array<{ id: string; key: string; description: string }> | null = null;
+
 export async function createOrganization(
   { name, slug, userId }: CreateOrganizationParams,
   dbInstance: DbClient = db as DbClient
 ) {
-  // Check if slug is already taken
+  const tStart = performance.now();
+
+  // 1. Check if slug is already taken
+  const tSlug0 = performance.now();
   const existingOrg = await dbInstance
     .select({ id: organizations.id })
     .from(organizations)
@@ -34,69 +39,171 @@ export async function createOrganization(
     .limit(1);
 
   if (existingOrg.length > 0) {
-    throw new ConflictError(
-      `An organization with the slug "${slug}" already exists.`
-    );
+    throw new ConflictError("This workspace URL is already in use.");
   }
+  const tSlug = (performance.now() - tSlug0).toFixed(1);
 
-  // 1. Ensure all system permissions exist
-  for (const perm of INITIAL_PERMISSIONS) {
-    const permId = `perm_${perm.key.replace(/\./g, "_")}`;
-    await dbInstance
-      .insert(permissions)
-      .values({
-        id: permId,
-        key: perm.key,
-        description: perm.description,
-      })
-      .onConflictDoNothing({ target: permissions.key });
+  // 2. Fetch existing permissions (or use in-memory cache if already loaded)
+  const tPerms0 = performance.now();
+  let allPermissions = cachedSystemPermissions;
+
+  if (!allPermissions || allPermissions.length < INITIAL_PERMISSIONS.length) {
+    allPermissions = await dbInstance.select().from(permissions);
+
+    if (allPermissions.length < INITIAL_PERMISSIONS.length) {
+      // Single bulk insert for all missing system permissions (1 query instead of 10)
+      await dbInstance
+        .insert(permissions)
+        .values(
+          INITIAL_PERMISSIONS.map((perm) => ({
+            id: `perm_${perm.key.replace(/\./g, "_")}`,
+            key: perm.key,
+            description: perm.description,
+          }))
+        )
+        .onConflictDoNothing({ target: permissions.key });
+
+      allPermissions = await dbInstance.select().from(permissions);
+    }
+    cachedSystemPermissions = allPermissions;
   }
+  const tPerms = (performance.now() - tPerms0).toFixed(1);
 
-  // Fetch all permissions from DB
-  const allPermissions = await dbInstance.select().from(permissions);
-
-  // 2. Create the Organization
+  // 3. Atomically create Organization, Role, Role Permissions (Bulk), and Member
+  const tBatch0 = performance.now();
   const orgId = crypto.randomUUID();
-  const [createdOrg] = await dbInstance
-    .insert(organizations)
-    .values({
-      id: orgId,
-      name,
-      slug,
-    })
-    .returning();
-
-  // 3. Create the default "Organization Admin" role
   const roleId = crypto.randomUUID();
-  const [adminRole] = await dbInstance
-    .insert(roles)
-    .values({
-      id: roleId,
-      organizationId: orgId,
-      name: DEFAULT_ORG_ADMIN_ROLE,
-      description: DEFAULT_ORG_ADMIN_DESCRIPTION,
-    })
-    .returning();
+  const memberId = crypto.randomUUID();
 
-  // 4. Assign all initial permissions to the Organization Admin role
-  for (const perm of allPermissions) {
-    await dbInstance.insert(rolePermissions).values({
-      roleId: adminRole.id,
-      permissionId: perm.id,
-    });
+  let createdOrg;
+  let adminRole;
+  let member;
+
+  try {
+    // Type assertion to access driver-specific atomic mechanisms
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = dbInstance as any;
+
+    if ("batch" in client && typeof client.batch === "function") {
+      // Neon HTTP: execute all 4 writes in ONE single HTTP round-trip (atomic transaction on Neon!)
+      const batchResult = await client.batch([
+        dbInstance.insert(organizations).values({
+          id: orgId,
+          name,
+          slug,
+        }).returning(),
+
+        dbInstance.insert(roles).values({
+          id: roleId,
+          organizationId: orgId,
+          name: DEFAULT_ORG_ADMIN_ROLE,
+          description: DEFAULT_ORG_ADMIN_DESCRIPTION,
+        }).returning(),
+
+        dbInstance.insert(rolePermissions).values(
+          allPermissions.map((perm) => ({
+            roleId,
+            permissionId: perm.id,
+          }))
+        ),
+
+        dbInstance.insert(organizationMembers).values({
+          id: memberId,
+          organizationId: orgId,
+          userId,
+          roleId,
+        }).returning(),
+      ]);
+
+      createdOrg = batchResult[0][0];
+      adminRole = batchResult[1][0];
+      member = batchResult[3][0];
+    } else if ("transaction" in client && typeof client.transaction === "function") {
+      // PGlite (test suite) or standard Postgres connection pool: real interactive transaction
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const txResult = await client.transaction(async (tx: any) => {
+        const [o] = await tx.insert(organizations).values({
+          id: orgId,
+          name,
+          slug,
+        }).returning();
+
+        const [r] = await tx.insert(roles).values({
+          id: roleId,
+          organizationId: orgId,
+          name: DEFAULT_ORG_ADMIN_ROLE,
+          description: DEFAULT_ORG_ADMIN_DESCRIPTION,
+        }).returning();
+
+        // Bulk insert all permissions in ONE statement
+        await tx.insert(rolePermissions).values(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          allPermissions.map((perm: any) => ({
+            roleId: r.id,
+            permissionId: perm.id,
+          }))
+        );
+
+        const [m] = await tx.insert(organizationMembers).values({
+          id: memberId,
+          organizationId: orgId,
+          userId,
+          roleId: r.id,
+        }).returning();
+
+        return { o, r, m };
+      });
+
+      createdOrg = txResult.o;
+      adminRole = txResult.r;
+      member = txResult.m;
+    } else {
+      // Fallback with bulk permissions insert
+      const [o] = await dbInstance.insert(organizations).values({
+        id: orgId,
+        name,
+        slug,
+      }).returning();
+
+      const [r] = await dbInstance.insert(roles).values({
+        id: roleId,
+        organizationId: orgId,
+        name: DEFAULT_ORG_ADMIN_ROLE,
+        description: DEFAULT_ORG_ADMIN_DESCRIPTION,
+      }).returning();
+
+      await dbInstance.insert(rolePermissions).values(
+        allPermissions.map((perm) => ({
+          roleId: r.id,
+          permissionId: perm.id,
+        }))
+      );
+
+      const [m] = await dbInstance.insert(organizationMembers).values({
+        id: memberId,
+        organizationId: orgId,
+        userId,
+        roleId: r.id,
+      }).returning();
+
+      createdOrg = o;
+      adminRole = r;
+      member = m;
+    }
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    if (errorMsg.includes("unique") || errorMsg.includes("23505") || errorMsg.includes("slug")) {
+      throw new ConflictError("This workspace URL is already in use.");
+    }
+    throw err;
   }
 
-  // 5. Add user as member with Organization Admin role
-  const memberId = crypto.randomUUID();
-  const [member] = await dbInstance
-    .insert(organizationMembers)
-    .values({
-      id: memberId,
-      organizationId: orgId,
-      userId,
-      roleId: adminRole.id,
-    })
-    .returning();
+  const tBatch = (performance.now() - tBatch0).toFixed(1);
+  const tTotal = (performance.now() - tStart).toFixed(1);
+
+  console.log(
+    `[OrgCreate] slug check: ${tSlug}ms | perms: ${tPerms}ms | atomic writes: ${tBatch}ms | total service: ${tTotal}ms`
+  );
 
   return {
     organization: createdOrg,
@@ -172,6 +279,29 @@ export async function getOrganizationCounts(
   organizationId: string,
   dbInstance: DbClient = db as DbClient
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = dbInstance as any;
+
+  if ("batch" in client && typeof client.batch === "function") {
+    // Neon HTTP: execute both queries in 1 single HTTP request (avoids concurrent TLS spin-up)
+    const [membersCount, rolesCount] = await client.batch([
+      dbInstance
+        .select({ id: organizationMembers.id })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.organizationId, organizationId)),
+      dbInstance
+        .select({ id: roles.id })
+        .from(roles)
+        .where(eq(roles.organizationId, organizationId)),
+    ]);
+
+    return {
+      totalUsers: membersCount.length,
+      activeRoles: rolesCount.length,
+    };
+  }
+
+  // PGlite (vitest) or standard connection fallback
   const [membersCount, rolesCount] = await Promise.all([
     dbInstance
       .select({ id: organizationMembers.id })

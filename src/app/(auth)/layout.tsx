@@ -24,13 +24,13 @@ export default async function AuthLayout({
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-3 sm:p-6 lg:p-8 bg-[#F1F5F9]">
-      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/80 overflow-hidden flex flex-col lg:flex-row min-h-[620px]">
-        {/* Left deep navy brand panel */}
-        <AuthSidePanel />
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F7F9FC]">
+      {/* Left 40% Brand Panel */}
+      <AuthSidePanel className="w-full lg:w-[40%] xl:w-[38%] min-h-screen" />
 
-        {/* Right white interactive form area */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 lg:p-12 bg-white">
+      {/* Right 60% Form Content Area */}
+      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 xl:p-20 overflow-y-auto">
+        <div className="w-full max-w-md my-auto">
           {children}
         </div>
       </div>

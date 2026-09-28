@@ -2,11 +2,11 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/context/organization-context";
 import { getUserOrganizations } from "@/lib/services/organization.service";
 import { CreateOrganizationForm } from "@/components/organization/create-org-form";
-import { Logo } from "@/components/brand/logo";
+import { AuthSidePanel } from "@/components/auth/auth-side-panel";
 
 export const metadata = {
-  title: "Create Organization - Ghuru CRM",
-  description: "Set up your organization in Ghuru CRM",
+  title: "Create Your Workspace — Ghuru CRM",
+  description: "Set up your organization to get started with Ghuru CRM",
 };
 
 export default async function OnboardingPage() {
@@ -24,24 +24,16 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col justify-between p-4 sm:p-8">
-      {/* Top Header */}
-      <header className="max-w-4xl w-full mx-auto py-4 flex items-center justify-between">
-        <Logo variant="light" size="md" />
-        <span className="text-xs text-slate-500 font-medium">
-          Step 1 of 3
-        </span>
-      </header>
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F7F9FC]">
+      {/* Left 40% Deep Navy Brand & Stepper Panel */}
+      <AuthSidePanel currentStep={1} className="w-full lg:w-[40%] xl:w-[38%] min-h-screen" />
 
-      {/* Main Stepper Card */}
-      <main className="w-full my-auto py-8">
-        <CreateOrganizationForm />
-      </main>
-
-      {/* Footer */}
-      <footer className="max-w-4xl w-full mx-auto text-center py-4 text-xs text-slate-400">
-        Ghuru CRM &bull; Smarter Business. Stronger Growth.
-      </footer>
+      {/* Right 60% Form Content Area */}
+      <div className="flex-1 flex flex-col justify-center items-center p-6 sm:p-12 lg:p-16 xl:p-20 overflow-y-auto">
+        <div className="w-full max-w-lg my-auto">
+          <CreateOrganizationForm />
+        </div>
+      </div>
     </div>
   );
 }

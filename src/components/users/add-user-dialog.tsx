@@ -87,13 +87,13 @@ export function AddUserDialog({ roles }: AddUserDialogProps) {
       <DialogTrigger asChild>
         <Button className="h-9 px-3.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm gap-2 transition-colors">
           <UserPlus className="h-3.5 w-3.5" />
-          <span>Add Member</span>
+          <span>Add member</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md p-6 rounded-2xl shadow-xl border-slate-200">
         <DialogHeader className="space-y-1.5 pb-2">
           <DialogTitle className="text-lg font-bold text-slate-900">
-            Add New Member
+            Add member
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
             Invite a new member to join this organization and assign their permission role.
@@ -188,7 +188,7 @@ export function AddUserDialog({ roles }: AddUserDialogProps) {
               className="h-9 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
             >
               {loading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-              Add Member
+              Add member
             </Button>
           </DialogFooter>
         </form>

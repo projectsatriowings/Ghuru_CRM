@@ -202,7 +202,7 @@ export function OrgSettingsForm({
                   className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-blue-600/30"
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
+                  Save changes
                 </Button>
               </div>
             )}

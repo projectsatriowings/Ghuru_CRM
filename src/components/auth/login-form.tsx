@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/brand/logo";
-import { Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, ArrowRight } from "lucide-react";
 
 export function LoginForm() {
   const router = useRouter();
@@ -52,48 +52,48 @@ export function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* Mobile-only logo display */}
-      <div className="lg:hidden mb-8 text-center flex justify-center">
-        <Logo variant="light" size="lg" />
+    <div className="w-full">
+      {/* Mobile-only compact logo */}
+      <div className="lg:hidden mb-8">
+        <Logo variant="light" size="md" />
       </div>
 
-      <div className="space-y-1 text-left mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-          Welcome Back
-        </h2>
-        <p className="text-sm text-slate-500">
-          Sign in to your account to continue
+      <div className="space-y-2 mb-8">
+        <h1 className="text-3xl sm:text-[34px] font-bold tracking-tight text-slate-900 leading-tight">
+          Welcome back
+        </h1>
+        <p className="text-sm sm:text-base text-slate-500 leading-normal">
+          Sign in to continue to your workspace.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="flex items-center gap-2.5 p-3.5 text-sm text-red-600 bg-red-50/80 rounded-xl border border-red-200 animate-in fade-in-50">
+          <div className="flex items-center gap-2.5 p-3 text-xs sm:text-sm text-red-600 bg-red-50 rounded-lg border border-red-200">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
             <span>{error}</span>
           </div>
         )}
 
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
-            Email address
+          <Label htmlFor="email" className="text-xs sm:text-sm font-medium text-slate-800">
+            Email
           </Label>
           <Input
             id="email"
             type="email"
-            placeholder="you@company.com"
+            placeholder="name@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
             required
-            className="h-11 rounded-lg border-slate-200 bg-white px-3.5 text-sm placeholder:text-slate-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/20"
+            className="h-11 rounded-lg border-slate-200 bg-white px-3.5 text-sm placeholder:text-slate-400 focus-visible:border-blue-600 focus-visible:ring-1 focus-visible:ring-blue-600 shadow-2xs"
           />
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-xs font-semibold text-slate-700">
+            <Label htmlFor="password" className="text-xs sm:text-sm font-medium text-slate-800">
               Password
             </Label>
           </div>
@@ -106,7 +106,7 @@ export function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
               required
-              className="h-11 rounded-lg border-slate-200 bg-white pr-10 text-sm placeholder:text-slate-400 focus-visible:border-blue-600 focus-visible:ring-2 focus-visible:ring-blue-600/20"
+              className="h-11 rounded-lg border-slate-200 bg-white pr-10 text-sm placeholder:text-slate-400 focus-visible:border-blue-600 focus-visible:ring-1 focus-visible:ring-blue-600 shadow-2xs"
             />
             <button
               type="button"
@@ -123,7 +123,7 @@ export function LoginForm() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs pt-1">
+        <div className="flex items-center justify-between text-xs pt-0.5">
           <label className="flex items-center gap-2 text-slate-600 cursor-pointer select-none">
             <input
               type="checkbox"
@@ -131,29 +131,39 @@ export function LoginForm() {
             />
             <span>Remember me</span>
           </label>
-          <span className="text-blue-600 hover:text-blue-700 font-medium cursor-pointer">
+          <span className="text-slate-500 hover:text-slate-800 font-medium cursor-pointer transition-colors">
             Forgot password?
           </span>
         </div>
 
-        <Button
-          type="submit"
-          className="w-full h-11 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-blue-600/30"
-          disabled={loading}
-        >
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Sign In
-        </Button>
-
-        <p className="text-sm text-center text-slate-500 pt-2">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/signup"
-            className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+        <div className="pt-2">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-11 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-xs flex items-center justify-center gap-2 group cursor-pointer"
           >
-            Create one
-          </Link>
-        </p>
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <span>Sign in</span>
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="text-center pt-2">
+          <p className="text-xs sm:text-sm text-slate-500">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/signup"
+              className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+            >
+              Create one
+            </Link>
+          </p>
+        </div>
       </form>
     </div>
   );

@@ -50,7 +50,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC]">
+    <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar permissions={ctx.permissionKeys} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar
@@ -59,7 +59,7 @@ export default async function DashboardLayout({
           roleName={ctx.role.name}
           userOrgs={userOrgs}
         />
-        <main className="flex-1 p-6 md:p-8 overflow-y-auto bg-[#F8FAFC]">
+        <main className="flex-1 p-6 md:p-8 overflow-y-auto bg-[#F7F9FC]">
           {children}
         </main>
       </div>

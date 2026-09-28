@@ -120,7 +120,7 @@ export function UsersTable({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            Team Members
+            Team members
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Manage your organization members, permissions, and roles.
@@ -141,7 +141,7 @@ export function UsersTable({
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <Input
-            placeholder="Search members by name or email..."
+            placeholder="Search members..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-8 h-9 text-xs bg-slate-50/50 border-slate-200 focus-visible:ring-1 focus-visible:ring-blue-600 focus-visible:border-blue-600"
@@ -308,7 +308,7 @@ export function UsersTable({
                                   className="flex items-center gap-2 px-2.5 py-2 text-xs text-slate-700 rounded-lg cursor-pointer hover:bg-slate-50"
                                 >
                                   <Edit2 className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Change Role</span>
+                                  <span>Change role</span>
                                 </DropdownMenuItem>
                               )}
                               {canDelete && !isCurrentUser && (
@@ -320,7 +320,7 @@ export function UsersTable({
                                     className="flex items-center gap-2 px-2.5 py-2 text-xs text-red-600 rounded-lg cursor-pointer hover:bg-red-50 hover:text-red-700"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
-                                    <span>Remove Member</span>
+                                    <span>Remove member</span>
                                   </DropdownMenuItem>
                                 </>
                               )}

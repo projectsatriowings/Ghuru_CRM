@@ -22,7 +22,11 @@ export function getDb(): Database {
     );
   }
 
-  const sql = neon(connectionString);
+  const sql = neon(connectionString, {
+    fetchOptions: {
+      keepalive: true,
+    },
+  });
   const dbInstance = drizzle(sql, { schema }) as unknown as Database;
   globalForDb.db = dbInstance;
 

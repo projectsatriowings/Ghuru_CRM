@@ -106,7 +106,7 @@ export function RolesList({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">
-            Roles & Permissions
+            Roles & permissions
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Configure access control, member permissions, and custom security roles.
@@ -129,7 +129,7 @@ export function RolesList({
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <Input
-            placeholder="Search roles or permissions..."
+            placeholder="Search roles..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-8 h-9 text-xs bg-slate-50/50 border-slate-200 focus-visible:ring-1 focus-visible:ring-blue-600 focus-visible:border-blue-600"

@@ -49,9 +49,9 @@ export function Sidebar({ permissions }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-[#08162B] text-slate-300 flex flex-col h-screen shrink-0 sticky top-0 border-r border-[#122744]">
+    <aside className="w-60 xl:w-64 bg-[#081B33] text-slate-300 flex flex-col h-screen shrink-0 sticky top-0 border-r border-[#0E2644] select-none">
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-6 border-b border-[#122744]">
+      <div className="h-16 flex items-center px-6 border-b border-[#0E2644]">
         <Logo variant="dark" size="sm" />
       </div>
 
@@ -59,7 +59,7 @@ export function Sidebar({ permissions }: SidebarProps) {
       <div className="flex-1 overflow-y-auto px-3.5 py-6 space-y-6">
         {/* MAIN Section */}
         <div>
-          <p className="px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+          <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
             Main
           </p>
           <nav className="space-y-1">
@@ -71,9 +71,9 @@ export function Sidebar({ permissions }: SidebarProps) {
                   href={item.href}
                   prefetch={true}
                   className={cn(
-                    "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30"
+                      ? "bg-blue-600 text-white font-semibold shadow-xs"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -87,7 +87,7 @@ export function Sidebar({ permissions }: SidebarProps) {
 
         {/* SETTINGS Section */}
         <div>
-          <p className="px-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+          <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
             Settings
           </p>
           <nav className="space-y-1">
@@ -102,9 +102,9 @@ export function Sidebar({ permissions }: SidebarProps) {
                   href={item.href}
                   prefetch={true}
                   className={cn(
-                    "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30"
+                      ? "bg-blue-600 text-white font-semibold shadow-xs"
                       : "text-slate-400 hover:text-white hover:bg-white/5"
                   )}
                 >
@@ -118,13 +118,13 @@ export function Sidebar({ permissions }: SidebarProps) {
       </div>
 
       {/* Bottom Footer Box */}
-      <div className="p-4 border-t border-[#122744]">
-        <div className="rounded-xl bg-[#0B1E38] border border-[#16335C] p-3 text-xs">
+      <div className="p-4 border-t border-[#0E2644]">
+        <div className="rounded-lg bg-[#0C2442] border border-[#143258] p-3 text-xs">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-white">Ghuru CRM</span>
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">Multi-Tenant Platform</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">SaaS Platform</p>
         </div>
       </div>
     </aside>

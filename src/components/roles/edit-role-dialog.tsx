@@ -300,7 +300,7 @@ function EditRoleFormContent({
           className="h-9 px-4 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm"
         >
           {loading && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-          Save Changes
+          Save changes
         </Button>
       </DialogFooter>
     </form>
@@ -321,7 +321,7 @@ export function EditRoleDialog({
         <DialogHeader className="space-y-1.5 pb-2">
           <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Shield className="h-5 w-5 text-blue-600" />
-            <span>Edit Role: {role.name}</span>
+            <span>Edit role: {role.name}</span>
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
             Modify role details and manage assigned permissions.

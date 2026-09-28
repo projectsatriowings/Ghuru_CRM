@@ -62,7 +62,7 @@ export function OrgSwitcher({ currentOrg, userOrgs }: OrgSwitcherProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64 p-1.5 rounded-xl shadow-lg border-slate-200" align="end">
         <DropdownMenuLabel className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1.5">
-          Your Organizations
+          Organizations
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-slate-100" />
         <div className="max-h-56 overflow-y-auto py-1 space-y-0.5">
@@ -93,7 +93,7 @@ export function OrgSwitcher({ currentOrg, userOrgs }: OrgSwitcherProps) {
           className="flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-semibold text-xs"
         >
           <PlusCircle className="h-3.5 w-3.5" />
-          <span>Create New Organization</span>
+          <span>Create new organization</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
