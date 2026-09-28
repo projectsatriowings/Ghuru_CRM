@@ -6,10 +6,14 @@ import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
-let _cachedDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
+export type Database = ReturnType<typeof drizzle<typeof schema>>;
 
-export function getDb() {
-  if (_cachedDb) return _cachedDb;
+const globalForDb = globalThis as unknown as {
+  db: Database | undefined;
+};
+
+export function getDb(): Database {
+  if (globalForDb.db) return globalForDb.db;
 
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -19,16 +23,16 @@ export function getDb() {
   }
 
   const sql = neon(connectionString);
-  _cachedDb = drizzle(sql, { schema });
-  return _cachedDb;
+  const dbInstance = drizzle(sql, { schema }) as unknown as Database;
+  globalForDb.db = dbInstance;
+
+  return dbInstance;
 }
 
-export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
+export const db = new Proxy({} as Database, {
   get(_target, prop) {
     const targetDb = getDb();
     const value = Reflect.get(targetDb, prop);
     return typeof value === "function" ? value.bind(targetDb) : value;
   },
 });
-
-export type Database = ReturnType<typeof drizzle<typeof schema>>;

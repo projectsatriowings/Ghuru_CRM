@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/context/organization-context";
+import { getUserOrganizations } from "@/lib/services/organization.service";
 import { CreateOrganizationForm } from "@/components/organization/create-org-form";
 import { Logo } from "@/components/brand/logo";
 
@@ -10,13 +10,17 @@ export const metadata = {
 };
 
 export default async function OnboardingPage() {
-  const reqHeaders = await headers();
-  const session = await auth.api.getSession({
-    headers: reqHeaders,
-  });
-
-  if (!session?.user) {
+  let user;
+  try {
+    const authSession = await requireAuth();
+    user = authSession.user;
+  } catch {
     redirect("/login");
+  }
+
+  const userOrgs = await getUserOrganizations(user.id);
+  if (userOrgs.length > 0) {
+    redirect("/dashboard");
   }
 
   return (

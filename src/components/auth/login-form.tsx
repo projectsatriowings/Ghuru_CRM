@@ -44,8 +44,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      router.replace("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
       setLoading(false);

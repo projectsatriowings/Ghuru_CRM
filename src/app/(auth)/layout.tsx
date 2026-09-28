@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { getUserOrganizations } from "@/lib/services/organization.service";
 import { AuthSidePanel } from "@/components/auth/auth-side-panel";
 
 export default async function AuthLayout({
@@ -8,17 +9,18 @@ export default async function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  try {
-    const reqHeaders = await headers();
-    const session = await auth.api.getSession({
-      headers: reqHeaders,
-    });
+  const reqHeaders = await headers();
+  const session = await auth.api.getSession({
+    headers: reqHeaders,
+  });
 
-    if (session?.user) {
+  if (session?.user) {
+    const userOrgs = await getUserOrganizations(session.user.id);
+    if (userOrgs.length > 0) {
       redirect("/dashboard");
+    } else {
+      redirect("/onboarding");
     }
-  } catch {
-    // Continue to auth page if not logged in
   }
 
   return (

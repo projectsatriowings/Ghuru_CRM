@@ -46,8 +46,7 @@ export function SignupForm() {
         return;
       }
 
-      router.push("/onboarding");
-      router.refresh();
+      router.replace("/onboarding");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
       setLoading(false);
