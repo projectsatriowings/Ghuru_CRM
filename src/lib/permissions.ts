@@ -39,6 +39,22 @@ export const INITIAL_PERMISSIONS = [
     key: "roles.delete",
     description: "Delete custom roles from the organization",
   },
+  {
+    key: "custom_fields.view",
+    description: "View organization custom field definitions",
+  },
+  {
+    key: "custom_fields.create",
+    description: "Create custom fields for workspace entities",
+  },
+  {
+    key: "custom_fields.update",
+    description: "Update custom field definitions and display order",
+  },
+  {
+    key: "custom_fields.delete",
+    description: "Archive or delete custom field definitions",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

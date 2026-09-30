@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Building2, Users, ShieldCheck } from "lucide-react";
+import { Building2, Users, ShieldCheck, SlidersHorizontal } from "lucide-react";
 
 interface SettingsNavProps {
   permissions: string[];
@@ -31,6 +31,12 @@ export function SettingsNav({ permissions }: SettingsNavProps) {
       href: "/settings/roles",
       icon: ShieldCheck,
       permission: "roles.view",
+    },
+    {
+      title: "Custom Fields",
+      href: "/settings/custom-fields",
+      icon: SlidersHorizontal,
+      permission: "custom_fields.view",
     },
   ];
 
