@@ -55,6 +55,22 @@ export const INITIAL_PERMISSIONS = [
     key: "custom_fields.delete",
     description: "Archive or delete custom field definitions",
   },
+  {
+    key: "leads.view",
+    description: "View organization leads and prospect details",
+  },
+  {
+    key: "leads.create",
+    description: "Create new leads in the organization",
+  },
+  {
+    key: "leads.update",
+    description: "Update lead details, assignment, and status",
+  },
+  {
+    key: "leads.delete",
+    description: "Archive or deactivate leads in the organization",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

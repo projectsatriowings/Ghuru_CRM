@@ -15,6 +15,10 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "@/lib/errors";
+import {
+  DEFAULT_ORG_ADMIN_ROLE,
+  ALL_PERMISSION_KEYS,
+} from "@/lib/permissions";
 
 export interface OrganizationContext {
   user: {
@@ -146,7 +150,11 @@ export const requireOrganization = cache(
       )
       .where(eq(rolePermissions.roleId, membership.roleId));
 
-    const permKeys = rolePerms.map((rp) => rp.key);
+    let permKeys = rolePerms.map((rp) => rp.key);
+    if (membership.roleName === DEFAULT_ORG_ADMIN_ROLE) {
+      const combined = new Set([...permKeys, ...ALL_PERMISSION_KEYS]);
+      permKeys = Array.from(combined);
+    }
     const permSet = new Set(permKeys);
 
     return {

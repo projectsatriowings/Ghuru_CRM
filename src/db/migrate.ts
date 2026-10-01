@@ -6,6 +6,14 @@ import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { setGlobalDispatcher, Agent } = require("undici");
+  setGlobalDispatcher(new Agent({ connect: { autoSelectFamily: false } }));
+} catch {
+  // Non-node or undici not found
+}
+
 export async function runMigrations() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {

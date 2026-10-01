@@ -12,6 +12,21 @@ export function apiSuccess<T>(data: T, status: number = 200) {
   );
 }
 
+export function apiPaginatedSuccess<T>(
+  data: T[],
+  pagination: { page: number; pageSize: number; total: number; totalPages: number },
+  status: number = 200
+) {
+  return NextResponse.json(
+    {
+      success: true,
+      data,
+      pagination,
+    },
+    { status }
+  );
+}
+
 export function apiError(error: unknown) {
   if (error instanceof ZodError) {
     return NextResponse.json(

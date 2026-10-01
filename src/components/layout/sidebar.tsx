@@ -9,6 +9,7 @@ import {
   Building2,
   Users,
   ShieldCheck,
+  UserPlus,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -24,6 +25,15 @@ export function Sidebar({ permissions }: SidebarProps) {
       title: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
+    },
+  ];
+
+  const crmNav = [
+    {
+      title: "Leads",
+      href: "/leads",
+      icon: UserPlus,
+      permission: "leads.view",
     },
   ];
 
@@ -84,6 +94,41 @@ export function Sidebar({ permissions }: SidebarProps) {
             })}
           </nav>
         </div>
+
+        {/* CRM Section */}
+        {permSet.has("leads.view") && (
+          <div>
+            <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+              CRM
+            </p>
+            <nav className="space-y-1">
+              {crmNav.map((item) => {
+                if (item.permission && !permSet.has(item.permission)) {
+                  return null;
+                }
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch={true}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-blue-600 text-white font-semibold shadow-xs"
+                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span>{item.title}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
 
         {/* SETTINGS Section */}
         <div>
