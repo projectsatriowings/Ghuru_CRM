@@ -42,6 +42,7 @@ describe("Milestone 2.2 — Lead Management Foundation Test Suite", () => {
       "0008_neat_terrax.sql",
       "0009_talented_bastion.sql",
       "0010_amused_gambit.sql",
+      "0011_chubby_pete_wisdom.sql",
     ];
 
     for (const file of migrationFiles) {

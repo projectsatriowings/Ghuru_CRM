@@ -4,7 +4,6 @@ import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "@/db/schema";
 import fs from "fs";
 import path from "path";
-import { eq, and } from "drizzle-orm";
 import { createOrganization } from "@/lib/services/organization.service";
 import {
   createCompany,
@@ -14,17 +13,14 @@ import {
   restoreCompany,
   getCompanyContacts,
   getCompanyLeads,
-  setContactCompany,
   setPrimaryContact,
   removeContactFromCompany,
-  setLeadCompany,
   removeLeadFromCompany,
 } from "@/lib/services/company.service";
 import {
   createContact,
   getContactById,
   updateContact,
-  getContacts,
   archiveContact,
   restoreContact,
 } from "@/lib/services/contact.service";
@@ -32,14 +28,12 @@ import {
   createLead,
   getLeadById,
   updateLead,
-  getLeads,
   archiveLead,
   restoreLead,
 } from "@/lib/services/lead.service";
 import {
   createPipeline,
   createStage,
-  getActivePipelinesWithStages,
 } from "@/lib/services/pipeline.service";
 import {
   createActivity,
@@ -52,7 +46,7 @@ import {
 import {
   createCustomField,
 } from "@/lib/services/custom-field.service";
-import { INITIAL_PERMISSIONS, DEFAULT_ORG_ADMIN_ROLE } from "@/lib/permissions";
+import { INITIAL_PERMISSIONS } from "@/lib/permissions";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 
 describe("Milestone 2.5C — CRM Entity Relationships Foundation Test Suite", () => {
@@ -81,6 +75,7 @@ describe("Milestone 2.5C — CRM Entity Relationships Foundation Test Suite", ()
       "0008_neat_terrax.sql",
       "0009_talented_bastion.sql",
       "0010_amused_gambit.sql",
+      "0011_chubby_pete_wisdom.sql",
     ];
 
     for (const file of migrationFiles) {

@@ -21,17 +21,33 @@ import {
   FileText,
   SlidersHorizontal,
 } from "lucide-react";
+import { type ActivityWithRelations } from "@/lib/types/activities";
+import { ActivityTimeline } from "@/components/activities/activity-timeline";
 
 interface ContactDetailViewProps {
   contact: ContactWithRelations;
+  activities?: ActivityWithRelations[];
+  members?: Array<{ id: string; name: string; email: string }>;
+  currentUserId?: string;
   canUpdate: boolean;
   canDelete: boolean;
+  canViewActivities?: boolean;
+  canCreateActivity?: boolean;
+  canUpdateActivity?: boolean;
+  canDeleteActivity?: boolean;
 }
 
 export function ContactDetailView({
   contact,
+  activities = [],
+  members = [],
+  currentUserId,
   canUpdate,
   canDelete,
+  canViewActivities = true,
+  canCreateActivity = false,
+  canUpdateActivity = false,
+  canDeleteActivity = false,
 }: ContactDetailViewProps) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -250,6 +266,20 @@ export function ContactDetailView({
               )}
             </div>
           </div>
+
+          {/* Activity Timeline */}
+          {canViewActivities && (
+            <ActivityTimeline
+              entityType="contact"
+              entityId={contact.id}
+              activities={activities}
+              members={members}
+              currentUserId={currentUserId}
+              canCreate={canCreateActivity}
+              canUpdate={canUpdateActivity}
+              canDelete={canDeleteActivity}
+            />
+          )}
         </div>
 
         {/* Right Column (Sidebar Summary) */}

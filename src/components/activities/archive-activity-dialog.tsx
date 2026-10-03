@@ -19,7 +19,7 @@ interface ArchiveActivityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activity: ActivityWithRelations | null;
-  leadId: string;
+  leadId?: string;
   onSuccess?: () => void;
 }
 
@@ -69,19 +69,16 @@ export function ArchiveActivityDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-6 rounded-2xl shadow-xl border-slate-200">
-        <DialogHeader className="space-y-2">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200/80">
+        <DialogHeader className="space-y-1 pb-2">
+          <div className="flex items-center gap-2 text-amber-600">
             <AlertTriangle className="h-5 w-5" />
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Archive Activity
+            </DialogTitle>
           </div>
-          <DialogTitle className="text-base font-bold text-slate-900">
-            Archive Activity
-          </DialogTitle>
-          <DialogDescription className="text-xs text-slate-600 leading-relaxed">
-            Are you sure you want to archive this activity record?
-            <span className="block font-semibold text-slate-800 mt-1">
-              &quot;{activity.title}&quot;
-            </span>
-            It will be removed from the main timeline view while preserving historical data.
+          <DialogDescription className="text-xs text-slate-500">
+            Are you sure you want to archive this activity? It will be removed
+            from the active timeline view.
           </DialogDescription>
         </DialogHeader>
 
@@ -91,7 +88,16 @@ export function ArchiveActivityDialog({
           </div>
         )}
 
-        <DialogFooter className="pt-3 gap-2">
+        <div className="p-3 rounded-lg bg-slate-50 border border-slate-200/80 text-xs text-slate-700">
+          <p className="font-semibold text-slate-900">{activity.title}</p>
+          {activity.description && (
+            <p className="text-slate-500 mt-1 line-clamp-2">
+              {activity.description}
+            </p>
+          )}
+        </div>
+
+        <DialogFooter className="pt-2 gap-2">
           <Button
             type="button"
             variant="outline"

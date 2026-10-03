@@ -886,6 +886,8 @@ export async function convertLead(
         dbInstance.insert(activities).values({
           id: activityId,
           organizationId,
+          entityType: "lead",
+          entityId: leadId,
           leadId,
           type: "note",
           title: "Lead converted to contact",
@@ -920,6 +922,8 @@ export async function convertLead(
         await tx.insert(activities).values({
           id: activityId,
           organizationId,
+          entityType: "lead",
+          entityId: leadId,
           leadId,
           type: "note",
           title: "Lead converted to contact",
@@ -952,6 +956,8 @@ export async function convertLead(
       await dbInstance.insert(activities).values({
         id: activityId,
         organizationId,
+        entityType: "lead",
+        entityId: leadId,
         leadId,
         type: "note",
         title: "Lead converted to contact",
@@ -1016,6 +1022,8 @@ export async function convertLead(
         dbInstance.insert(activities).values({
           id: activityId,
           organizationId,
+          entityType: "lead",
+          entityId: leadId,
           leadId,
           type: "note",
           title: "Lead linked to existing contact",
@@ -1036,6 +1044,8 @@ export async function convertLead(
         await tx.insert(activities).values({
           id: activityId,
           organizationId,
+          entityType: "lead",
+          entityId: leadId,
           leadId,
           type: "note",
           title: "Lead linked to existing contact",
@@ -1054,6 +1064,8 @@ export async function convertLead(
       await dbInstance.insert(activities).values({
         id: activityId,
         organizationId,
+        entityType: "lead",
+        entityId: leadId,
         leadId,
         type: "note",
         title: "Lead linked to existing contact",

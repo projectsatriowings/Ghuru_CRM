@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { createActivityAction } from "@/lib/actions/activity.actions";
 import { createActivitySchema } from "@/lib/validations/activity";
 import { formatZodError } from "@/lib/validations/helpers";
-import { ACTIVITY_TYPES, type ActivityType } from "@/db/schema/activities";
+import {
+  type ActivityType,
+  type CrmEntityType,
+  type ActivityStatus,
+} from "@/db/schema/activities";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/types/activities";
 import {
   Dialog,
@@ -29,14 +33,29 @@ import {
 import { Plus, Loader2, AlertCircle } from "lucide-react";
 import { ActivityIcon } from "./activity-icon";
 
+const CREATABLE_ACTIVITY_TYPES: ActivityType[] = [
+  "call",
+  "email",
+  "meeting",
+  "note",
+  "task",
+  "follow_up",
+];
+
 interface AddActivityDialogProps {
-  leadId: string;
+  entityType?: CrmEntityType;
+  entityId?: string;
+  leadId?: string;
+  members?: Array<{ id: string; name: string; email: string }>;
   trigger?: React.ReactNode;
   onSuccess?: () => void;
 }
 
 export function AddActivityDialog({
+  entityType = "lead",
+  entityId,
   leadId,
+  members = [],
   trigger,
   onSuccess,
 }: AddActivityDialogProps) {
@@ -45,17 +64,28 @@ export function AddActivityDialog({
   const [type, setType] = useState<ActivityType>("call");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<ActivityStatus>("completed");
+  const [assignedToUserId, setAssignedToUserId] = useState<string>("none");
+  const [dueDate, setDueDate] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const targetEntityId = entityId || leadId || "";
+  const targetEntityType = entityType || "lead";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     const validation = createActivitySchema.safeParse({
+      entityType: targetEntityType,
+      entityId: targetEntityId,
       type,
       title,
       description,
+      status,
+      assignedToUserId: assignedToUserId === "none" ? undefined : assignedToUserId,
+      dueAt: dueDate ? new Date(dueDate) : undefined,
     });
 
     if (!validation.success) {
@@ -66,7 +96,11 @@ export function AddActivityDialog({
     setLoading(true);
 
     try {
-      const res = await createActivityAction(leadId, validation.data);
+      const res = await createActivityAction({
+        ...validation.data,
+        entityType: targetEntityType,
+        entityId: targetEntityId,
+      });
 
       if (!res.success) {
         setError(res.error || "Failed to log activity.");
@@ -78,6 +112,9 @@ export function AddActivityDialog({
       setTitle("");
       setDescription("");
       setType("call");
+      setStatus("completed");
+      setAssignedToUserId("none");
+      setDueDate("");
       setLoading(false);
 
       if (onSuccess) {
@@ -92,6 +129,13 @@ export function AddActivityDialog({
       setLoading(false);
     }
   }
+
+  const entityLabel =
+    targetEntityType === "lead"
+      ? "Lead"
+      : targetEntityType === "contact"
+      ? "Contact"
+      : "Company";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -109,7 +153,7 @@ export function AddActivityDialog({
             Add Activity
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            Log an interaction or record for this lead.
+            Log an interaction or record for this {entityLabel.toLowerCase()}.
           </DialogDescription>
         </DialogHeader>
 
@@ -121,32 +165,63 @@ export function AddActivityDialog({
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="activityType"
-              className="text-xs font-semibold text-slate-700"
-            >
-              Activity Type <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={type}
-              onValueChange={(val) => setType(val as ActivityType)}
-              disabled={loading}
-            >
-              <SelectTrigger id="activityType" className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {ACTIVITY_TYPES.map((t) => (
-                  <SelectItem key={t} value={t} className="text-xs">
-                    <div className="flex items-center gap-2">
-                      <ActivityIcon type={t} className="h-3.5 w-3.5 text-slate-500" />
-                      <span>{ACTIVITY_TYPE_LABELS[t]}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="activityType"
+                className="text-xs font-semibold text-slate-700"
+              >
+                Activity Type <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={type}
+                onValueChange={(val) => {
+                  const newType = val as ActivityType;
+                  setType(newType);
+                  if (newType === "task" || newType === "follow_up") {
+                    setStatus("pending");
+                  }
+                }}
+                disabled={loading}
+              >
+                <SelectTrigger id="activityType" className="h-9 text-xs bg-white">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CREATABLE_ACTIVITY_TYPES.map((t) => (
+                    <SelectItem key={t} value={t} className="text-xs">
+                      <div className="flex items-center gap-2">
+                        <ActivityIcon type={t} className="h-3.5 w-3.5 text-slate-500" />
+                        <span>{ACTIVITY_TYPE_LABELS[t]}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="activityStatus"
+                className="text-xs font-semibold text-slate-700"
+              >
+                Status
+              </Label>
+              <Select
+                value={status}
+                onValueChange={(val) => setStatus(val as ActivityStatus)}
+                disabled={loading}
+              >
+                <SelectTrigger id="activityStatus" className="h-9 text-xs bg-white">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="completed" className="text-xs">Completed</SelectItem>
+                  <SelectItem value="pending" className="text-xs">Pending</SelectItem>
+                  <SelectItem value="cancelled" className="text-xs">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -158,7 +233,7 @@ export function AddActivityDialog({
             </Label>
             <Input
               id="activityTitle"
-              placeholder="e.g. Discussed Full Stack course"
+              placeholder="e.g. Call regarding quotation review"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={loading}
@@ -177,12 +252,61 @@ export function AddActivityDialog({
             <textarea
               id="activityDescription"
               rows={3}
-              placeholder="e.g. Discussed course details and weekend batch."
+              placeholder="e.g. Reviewed requirements, requested follow-up next Tuesday."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={loading}
-              className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400"
+              className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 resize-none"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {members.length > 0 && (
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="activityAssignee"
+                  className="text-xs font-semibold text-slate-700"
+                >
+                  Assigned To <span className="text-slate-400 font-normal">(optional)</span>
+                </Label>
+                <Select
+                  value={assignedToUserId}
+                  onValueChange={(val) => setAssignedToUserId(val ?? "")}
+                  disabled={loading}
+                >
+                  <SelectTrigger id="activityAssignee" className="h-9 text-xs bg-white">
+                    <SelectValue placeholder="Select assignee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-xs text-slate-500">
+                      Unassigned
+                    </SelectItem>
+                    {members.map((m) => (
+                      <SelectItem key={m.id} value={m.id} className="text-xs">
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="activityDueDate"
+                className="text-xs font-semibold text-slate-700"
+              >
+                Due Date <span className="text-slate-400 font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="activityDueDate"
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                disabled={loading}
+                className="h-9 text-xs bg-white"
+              />
+            </div>
           </div>
 
           <DialogFooter className="pt-2 gap-2">

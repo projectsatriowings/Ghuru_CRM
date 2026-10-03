@@ -4,7 +4,6 @@ import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "@/db/schema";
 import fs from "fs";
 import path from "path";
-import { eq } from "drizzle-orm";
 import { createOrganization } from "@/lib/services/organization.service";
 import {
   createLead,
@@ -49,6 +48,7 @@ describe("Milestone 2.5D — Lead → Contact Conversion Foundation Test Suite",
       "0008_neat_terrax.sql",
       "0009_talented_bastion.sql",
       "0010_amused_gambit.sql",
+      "0011_chubby_pete_wisdom.sql",
     ];
 
     for (const file of migrationFiles) {

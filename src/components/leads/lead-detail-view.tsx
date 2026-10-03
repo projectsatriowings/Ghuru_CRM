@@ -200,11 +200,15 @@ export function LeadDetailView({
           {/* Activity Timeline */}
           {canViewActivities && (
             <ActivityTimeline
+              entityType="lead"
+              entityId={lead.id}
               leadId={lead.id}
               activities={activities}
               canCreate={canCreateActivity}
               canUpdate={canUpdateActivity}
               canDelete={canDeleteActivity}
+              members={members}
+              currentUserId={currentUserId}
               onRefresh={() => router.refresh()}
             />
           )}
@@ -342,6 +346,21 @@ export function LeadDetailView({
               )}
             </div>
           </div>
+
+          {/* Activity Timeline */}
+          {canViewActivities && (
+            <ActivityTimeline
+              entityType="lead"
+              entityId={lead.id}
+              activities={activities || []}
+              followUps={followUps || []}
+              members={members}
+              currentUserId={currentUserId}
+              canCreate={canCreateActivity}
+              canUpdate={canUpdateActivity}
+              canDelete={canDeleteActivity}
+            />
+          )}
         </div>
 
         {/* Right Column (Sidebar Summary) */}

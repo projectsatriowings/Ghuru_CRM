@@ -5,8 +5,14 @@ import { useRouter } from "next/navigation";
 import { updateActivityAction } from "@/lib/actions/activity.actions";
 import { updateActivitySchema } from "@/lib/validations/activity";
 import { formatZodError } from "@/lib/validations/helpers";
-import { ACTIVITY_TYPES, type ActivityType } from "@/db/schema/activities";
-import { ACTIVITY_TYPE_LABELS, type ActivityWithRelations } from "@/lib/types/activities";
+import {
+  type ActivityType,
+  type ActivityStatus,
+} from "@/db/schema/activities";
+import {
+  ACTIVITY_TYPE_LABELS,
+  type ActivityWithRelations,
+} from "@/lib/types/activities";
 import {
   Dialog,
   DialogContent,
@@ -25,25 +31,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, AlertCircle, Edit2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { ActivityIcon } from "./activity-icon";
+
+const EDITABLE_ACTIVITY_TYPES: ActivityType[] = [
+  "call",
+  "email",
+  "meeting",
+  "note",
+  "task",
+  "follow_up",
+];
 
 interface EditActivityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   activity: ActivityWithRelations | null;
-  leadId: string;
+  leadId?: string;
+  members?: Array<{ id: string; name: string; email: string }>;
   onSuccess?: () => void;
 }
 
 function EditActivityFormContent({
   activity,
-  leadId,
+  members = [],
   onClose,
   onSuccess,
 }: {
   activity: ActivityWithRelations;
-  leadId: string;
+  members?: Array<{ id: string; name: string; email: string }>;
   onClose: () => void;
   onSuccess?: () => void;
 }) {
@@ -51,6 +67,15 @@ function EditActivityFormContent({
   const [type, setType] = useState<ActivityType>(activity.type);
   const [title, setTitle] = useState(activity.title);
   const [description, setDescription] = useState(activity.description || "");
+  const [status, setStatus] = useState<ActivityStatus>(activity.status || "completed");
+  const [assignedToUserId, setAssignedToUserId] = useState<string>(
+    activity.assignedToUserId || "none"
+  );
+  const [dueDate, setDueDate] = useState<string>(
+    activity.dueAt
+      ? new Date(activity.dueAt).toISOString().split("T")[0]
+      : ""
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +87,9 @@ function EditActivityFormContent({
       type,
       title,
       description,
+      status,
+      assignedToUserId: assignedToUserId === "none" ? null : assignedToUserId,
+      dueAt: dueDate ? new Date(dueDate) : null,
     });
 
     if (!validation.success) {
@@ -74,7 +102,6 @@ function EditActivityFormContent({
     try {
       const res = await updateActivityAction(
         activity.id,
-        leadId,
         validation.data
       );
 
@@ -109,32 +136,57 @@ function EditActivityFormContent({
         </div>
       )}
 
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="editActivityType"
-          className="text-xs font-semibold text-slate-700"
-        >
-          Activity Type <span className="text-red-500">*</span>
-        </Label>
-        <Select
-          value={type}
-          onValueChange={(val) => setType(val as ActivityType)}
-          disabled={loading}
-        >
-          <SelectTrigger id="editActivityType" className="h-9 text-xs bg-white">
-            <SelectValue placeholder="Select type" />
-          </SelectTrigger>
-          <SelectContent>
-            {ACTIVITY_TYPES.map((t) => (
-              <SelectItem key={t} value={t} className="text-xs">
-                <div className="flex items-center gap-2">
-                  <ActivityIcon type={t} className="h-3.5 w-3.5 text-slate-500" />
-                  <span>{ACTIVITY_TYPE_LABELS[t]}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="editActivityType"
+            className="text-xs font-semibold text-slate-700"
+          >
+            Activity Type <span className="text-red-500">*</span>
+          </Label>
+          <Select
+            value={type}
+            onValueChange={(val) => setType(val as ActivityType)}
+            disabled={loading}
+          >
+            <SelectTrigger id="editActivityType" className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {EDITABLE_ACTIVITY_TYPES.map((t) => (
+                <SelectItem key={t} value={t} className="text-xs">
+                  <div className="flex items-center gap-2">
+                    <ActivityIcon type={t} className="h-3.5 w-3.5 text-slate-500" />
+                    <span>{ACTIVITY_TYPE_LABELS[t]}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="editActivityStatus"
+            className="text-xs font-semibold text-slate-700"
+          >
+            Status
+          </Label>
+          <Select
+            value={status}
+            onValueChange={(val) => setStatus(val as ActivityStatus)}
+            disabled={loading}
+          >
+            <SelectTrigger id="editActivityStatus" className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="completed" className="text-xs">Completed</SelectItem>
+              <SelectItem value="pending" className="text-xs">Pending</SelectItem>
+              <SelectItem value="cancelled" className="text-xs">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-1.5">
@@ -146,7 +198,6 @@ function EditActivityFormContent({
         </Label>
         <Input
           id="editActivityTitle"
-          placeholder="e.g. Discussed Full Stack course"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           disabled={loading}
@@ -165,12 +216,60 @@ function EditActivityFormContent({
         <textarea
           id="editActivityDescription"
           rows={3}
-          placeholder="e.g. Discussed course details and weekend batch."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           disabled={loading}
-          className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400"
+          className="w-full text-xs p-2.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-slate-400 resize-none"
         />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {members.length > 0 && (
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="editActivityAssignee"
+              className="text-xs font-semibold text-slate-700"
+            >
+              Assigned To
+            </Label>
+            <Select
+              value={assignedToUserId}
+              onValueChange={(val) => setAssignedToUserId(val ?? "")}
+              disabled={loading}
+            >
+              <SelectTrigger id="editActivityAssignee" className="h-9 text-xs bg-white">
+                <SelectValue placeholder="Select assignee" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="text-xs text-slate-500">
+                  Unassigned
+                </SelectItem>
+                {members.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="editActivityDueDate"
+            className="text-xs font-semibold text-slate-700"
+          >
+            Due Date
+          </Label>
+          <Input
+            id="editActivityDueDate"
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            disabled={loading}
+            className="h-9 text-xs bg-white"
+          />
+        </div>
       </div>
 
       <DialogFooter className="pt-2 gap-2">
@@ -200,7 +299,7 @@ export function EditActivityDialog({
   open,
   onOpenChange,
   activity,
-  leadId,
+  members = [],
   onSuccess,
 }: EditActivityDialogProps) {
   if (!activity) return null;
@@ -209,19 +308,17 @@ export function EditActivityDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-6 rounded-2xl shadow-xl border-slate-200">
         <DialogHeader className="space-y-1 pb-2">
-          <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Edit2 className="h-4 w-4 text-blue-600" />
-            <span>Edit Activity</span>
+          <DialogTitle className="text-base font-bold text-slate-900">
+            Edit Activity
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            Update activity type, title, or description.
+            Update details for this activity record.
           </DialogDescription>
         </DialogHeader>
 
         <EditActivityFormContent
-          key={activity.id}
           activity={activity}
-          leadId={leadId}
+          members={members}
           onClose={() => onOpenChange(false)}
           onSuccess={onSuccess}
         />

@@ -25,25 +25,41 @@ import {
   Building,
   Star,
 } from "lucide-react";
+import { type ActivityWithRelations } from "@/lib/types/activities";
+import { ActivityTimeline } from "@/components/activities/activity-timeline";
 
 interface CompanyDetailViewProps {
   company: CompanyWithRelations;
   contacts?: CompanyContactItem[];
   leads?: CompanyLeadItem[];
+  activities?: ActivityWithRelations[];
+  members?: Array<{ id: string; name: string; email: string }>;
+  currentUserId?: string;
   canUpdate: boolean;
   canDelete: boolean;
   canUpdateContacts?: boolean;
   canUpdateLeads?: boolean;
+  canViewActivities?: boolean;
+  canCreateActivity?: boolean;
+  canUpdateActivity?: boolean;
+  canDeleteActivity?: boolean;
 }
 
 export function CompanyDetailView({
   company,
   contacts = [],
   leads = [],
+  activities = [],
+  members = [],
+  currentUserId,
   canUpdate,
   canDelete,
   canUpdateContacts = true,
   canUpdateLeads = true,
+  canViewActivities = true,
+  canCreateActivity = false,
+  canUpdateActivity = false,
+  canDeleteActivity = false,
 }: CompanyDetailViewProps) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -309,6 +325,20 @@ export function CompanyDetailView({
             leads={leads}
             canUpdateLeads={canUpdateLeads}
           />
+
+          {/* Activity Timeline */}
+          {canViewActivities && (
+            <ActivityTimeline
+              entityType="company"
+              entityId={company.id}
+              activities={activities}
+              members={members}
+              currentUserId={currentUserId}
+              canCreate={canCreateActivity}
+              canUpdate={canUpdateActivity}
+              canDelete={canDeleteActivity}
+            />
+          )}
         </div>
 
         {/* Right Column (Sidebar Summary) */}
