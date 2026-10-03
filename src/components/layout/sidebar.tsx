@@ -10,6 +10,7 @@ import {
   Users,
   ShieldCheck,
   UserPlus,
+  Contact,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -34,6 +35,12 @@ export function Sidebar({ permissions }: SidebarProps) {
       href: "/leads",
       icon: UserPlus,
       permission: "leads.view",
+    },
+    {
+      title: "Contacts",
+      href: "/contacts",
+      icon: Contact,
+      permission: "contacts.view",
     },
   ];
 

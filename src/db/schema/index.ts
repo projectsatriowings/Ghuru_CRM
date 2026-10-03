@@ -6,3 +6,4 @@ export * from "./leads";
 export * from "./activities";
 export * from "./follow-ups";
 export * from "./pipelines";
+export * from "./contacts";

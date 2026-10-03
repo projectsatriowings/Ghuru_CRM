@@ -67,6 +67,7 @@ function EditRoleFormContent({
       pipelines: { id: "pipelines", title: "Pipelines & Stages", items: [] },
       custom_fields: { id: "custom_fields", title: "Custom Fields", items: [] },
       leads: { id: "leads", title: "Leads & Prospects", items: [] },
+      contacts: { id: "contacts", title: "Contacts", items: [] },
     };
 
     const other: PermissionItem[] = [];

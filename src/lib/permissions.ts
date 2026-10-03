@@ -119,6 +119,22 @@ export const INITIAL_PERMISSIONS = [
     key: "pipelines.delete",
     description: "Archive or delete pipelines and pipeline stages",
   },
+  {
+    key: "contacts.view",
+    description: "View organization contacts and contact details",
+  },
+  {
+    key: "contacts.create",
+    description: "Create new contacts in the organization",
+  },
+  {
+    key: "contacts.update",
+    description: "Update contacts, edit details, and modify assignments",
+  },
+  {
+    key: "contacts.delete",
+    description: "Archive or deactivate contacts in the organization",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];
