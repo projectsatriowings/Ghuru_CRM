@@ -7,6 +7,7 @@ import { Logo } from "@/components/brand/logo";
 import {
   LayoutDashboard,
   Building2,
+  Building,
   Users,
   ShieldCheck,
   UserPlus,
@@ -41,6 +42,12 @@ export function Sidebar({ permissions }: SidebarProps) {
       href: "/contacts",
       icon: Contact,
       permission: "contacts.view",
+    },
+    {
+      title: "Companies",
+      href: "/companies",
+      icon: Building,
+      permission: "companies.view",
     },
   ];
 

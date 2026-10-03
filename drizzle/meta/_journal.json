@@ -57,6 +57,13 @@
       "when": 1791017008622,
       "tag": "0007_shiny_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791019432209,
+      "tag": "0008_neat_terrax",
+      "breakpoints": true
     }
   ]
 }

@@ -135,6 +135,22 @@ export const INITIAL_PERMISSIONS = [
     key: "contacts.delete",
     description: "Archive or deactivate contacts in the organization",
   },
+  {
+    key: "companies.view",
+    description: "View organization companies and company details",
+  },
+  {
+    key: "companies.create",
+    description: "Create new companies in the organization",
+  },
+  {
+    key: "companies.update",
+    description: "Update company details and ownership",
+  },
+  {
+    key: "companies.delete",
+    description: "Archive or deactivate companies in the organization",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

@@ -49,6 +49,7 @@ export function CreateRoleDialog({ systemPermissions }: CreateRoleDialogProps) {
       custom_fields: { id: "custom_fields", title: "Custom Fields", items: [] },
       leads: { id: "leads", title: "Leads & Prospects", items: [] },
       contacts: { id: "contacts", title: "Contacts", items: [] },
+      companies: { id: "companies", title: "Companies", items: [] },
     };
 
     const other: PermissionItem[] = [];
