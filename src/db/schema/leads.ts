@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { users } from "./users";
 import { pipelines, pipelineStages } from "./pipelines";
+import { companies } from "./companies";
 
 export const leads = pgTable(
   "leads",
@@ -11,6 +12,9 @@ export const leads = pgTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
+    companyId: text("company_id").references(() => companies.id, {
+      onDelete: "set null",
+    }),
     firstName: text("first_name").notNull(),
     lastName: text("last_name"),
     email: text("email"),
@@ -55,6 +59,8 @@ export const leads = pgTable(
     index("leads_stage_idx").on(table.stageId),
     index("leads_org_created_idx").on(table.organizationId, table.createdAt),
     index("leads_org_archived_idx").on(table.organizationId, table.archivedAt),
+    index("leads_org_company_idx").on(table.organizationId, table.companyId),
+    index("leads_company_idx").on(table.companyId),
   ]
 );
 
@@ -74,5 +80,9 @@ export const leadsRelations = relations(leads, ({ one }) => ({
   stage: one(pipelineStages, {
     fields: [leads.stageId],
     references: [pipelineStages.id],
+  }),
+  company: one(companies, {
+    fields: [leads.companyId],
+    references: [companies.id],
   }),
 }));

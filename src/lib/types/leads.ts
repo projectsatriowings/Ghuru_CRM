@@ -103,6 +103,7 @@ export const LEAD_STATUS_VARIANTS: Record<
 export interface Lead {
   id: string;
   organizationId: string;
+  companyId?: string | null;
   firstName: string;
   lastName: string | null;
   email: string | null;
@@ -136,10 +137,16 @@ export interface LeadStageSummary {
   displayOrder?: number;
 }
 
+export interface LeadCompanySummary {
+  id: string;
+  name: string;
+}
+
 export interface LeadWithRelations extends Lead {
   assignedToUser?: LeadAssignedUser | null;
   pipeline?: LeadPipelineSummary | null;
   stage?: LeadStageSummary | null;
+  company?: LeadCompanySummary | null;
   customFields?: Record<string, unknown>;
   customFieldValues?: Array<{
     field: CustomFieldDefinition;

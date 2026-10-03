@@ -4,6 +4,7 @@ import { getLeadById } from "@/lib/services/lead.service";
 import { getCustomFields } from "@/lib/services/custom-field.service";
 import { getOrganizationMembers } from "@/lib/services/user.service";
 import { getActivePipelinesWithStages } from "@/lib/services/pipeline.service";
+import { getCompanies } from "@/lib/services/company.service";
 import { LeadForm } from "@/components/leads/lead-form";
 
 interface EditLeadPageProps {
@@ -32,17 +33,23 @@ export default async function EditLeadPage({ params }: EditLeadPageProps) {
       }),
       getOrganizationMembers(ctx.organization.id),
       getActivePipelinesWithStages(ctx.organization.id),
+      getCompanies(ctx.organization.id, { pageSize: 20, archived: "false" }),
     ]);
   } catch {
     notFound();
   }
 
-  const [lead, customFields, membersResult, pipelines] = data;
+  const [lead, customFields, membersResult, pipelines, companiesResult] = data;
 
   const members = membersResult.map((m) => ({
     id: m.userId,
     name: m.name,
     email: m.email,
+  }));
+
+  const companies = companiesResult.data.map((c) => ({
+    id: c.id,
+    name: c.name,
   }));
 
   return (
@@ -52,6 +59,7 @@ export default async function EditLeadPage({ params }: EditLeadPageProps) {
       pipelines={pipelines}
       customFieldDefinitions={customFields}
       members={members}
+      companies={companies}
     />
   );
 }

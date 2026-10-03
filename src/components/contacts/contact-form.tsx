@@ -30,13 +30,19 @@ import {
   Mail,
   Phone,
   UserCheck,
+  Building,
 } from "lucide-react";
+import {
+  EntityCombobox,
+  type ComboboxOption,
+} from "@/components/common/entity-combobox";
 
 interface ContactFormProps {
   mode: "create" | "edit";
   initialData?: ContactWithRelations | null;
   customFieldDefinitions: CustomFieldDefinition[];
   members: Array<{ id: string; name: string; email: string }>;
+  companies?: Array<{ id: string; name: string }>;
 }
 
 export function ContactForm({
@@ -44,6 +50,7 @@ export function ContactForm({
   initialData,
   customFieldDefinitions,
   members,
+  companies = [],
 }: ContactFormProps) {
   const router = useRouter();
 
@@ -52,10 +59,44 @@ export function ContactForm({
   const [lastName, setLastName] = useState(initialData?.lastName || "");
   const [email, setEmail] = useState(initialData?.email || "");
   const [phone, setPhone] = useState(initialData?.phone || "");
+  const [companyId, setCompanyId] = useState<string | null>(
+    initialData?.companyId || null
+  );
+  const [isPrimaryContact, setIsPrimaryContact] = useState<boolean>(
+    initialData?.isPrimaryContact || false
+  );
   const [ownerUserId, setOwnerUserId] = useState<string>(
     initialData?.ownerUserId || "unassigned"
   );
   const [notes, setNotes] = useState(initialData?.notes || "");
+
+  const initialCompanyOptions: ComboboxOption[] = [
+    ...(initialData?.company
+      ? [{ id: initialData.company.id, name: initialData.company.name }]
+      : []),
+    ...companies
+      .filter((c) => c.id !== initialData?.company?.id)
+      .map((c) => ({ id: c.id, name: c.name })),
+  ];
+
+  const fetchCompanyOptions = async (query: string): Promise<ComboboxOption[]> => {
+    try {
+      const res = await fetch(
+        `/api/v1/companies?search=${encodeURIComponent(query)}&pageSize=20&archived=false`
+      );
+      const json = await res.json();
+      if (json.success && json.data) {
+        return json.data.map((c: { id: string; name: string; industry?: string }) => ({
+          id: c.id,
+          name: c.name,
+          subtext: c.industry || undefined,
+        }));
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  };
 
   // Custom Fields Map (fieldKey -> value)
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(() => {
@@ -104,6 +145,8 @@ export function ContactForm({
       lastName: lastName.trim() || null,
       email: email.trim() || null,
       phone: phone.trim() || null,
+      companyId: companyId || null,
+      isPrimaryContact: Boolean(companyId && isPrimaryContact),
       ownerUserId: ownerUserId === "unassigned" ? null : ownerUserId,
       notes: notes.trim() || null,
       customFields,
@@ -322,6 +365,44 @@ export function ContactForm({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label
+                className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"
+              >
+                <Building className="h-3 w-3 text-slate-400" />
+                Company
+              </Label>
+              <EntityCombobox
+                value={companyId}
+                onChange={(val) => {
+                  setCompanyId(val);
+                  if (!val) setIsPrimaryContact(false);
+                }}
+                placeholder="Select company (optional)..."
+                searchPlaceholder="Search companies..."
+                clearLabel="No Company"
+                fetchOptions={fetchCompanyOptions}
+                initialOptions={initialCompanyOptions}
+              />
+              {companyId && (
+                <div className="pt-1 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="isPrimaryContact"
+                    checked={isPrimaryContact}
+                    onChange={(e) => setIsPrimaryContact(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <Label
+                    htmlFor="isPrimaryContact"
+                    className="text-[11px] font-medium text-slate-600 cursor-pointer select-none"
+                  >
+                    Primary contact for this company
+                  </Label>
+                </div>
+              )}
             </div>
           </div>
 

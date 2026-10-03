@@ -38,7 +38,12 @@ import {
   Briefcase,
   GitBranch,
   ArrowLeft,
+  Building,
 } from "lucide-react";
+import {
+  EntityCombobox,
+  type ComboboxOption,
+} from "@/components/common/entity-combobox";
 
 interface LeadFormProps {
   mode: "create" | "edit";
@@ -46,6 +51,7 @@ interface LeadFormProps {
   pipelines?: PipelineWithStages[];
   customFieldDefinitions: CustomFieldDefinition[];
   members: Array<{ id: string; name: string; email: string }>;
+  companies?: Array<{ id: string; name: string }>;
 }
 
 export function LeadForm({
@@ -54,6 +60,7 @@ export function LeadForm({
   pipelines = [],
   customFieldDefinitions,
   members,
+  companies = [],
 }: LeadFormProps) {
   const router = useRouter();
 
@@ -71,7 +78,42 @@ export function LeadForm({
   const [assignedToUserId, setAssignedToUserId] = useState<string>(
     initialData?.assignedToUserId || "unassigned"
   );
+  const [companyId, setCompanyId] = useState<string | null>(
+    initialData?.companyId || initialData?.company?.id || null
+  );
   const [notes, setNotes] = useState(initialData?.notes || "");
+
+  const initialCompanyOptions: ComboboxOption[] = [
+    ...(initialData?.company
+      ? [{ id: initialData.company.id, name: initialData.company.name }]
+      : []),
+    ...companies
+      .filter((c) => c.id !== initialData?.company?.id)
+      .map((c) => ({ id: c.id, name: c.name })),
+  ];
+
+  const fetchCompanyOptions = async (
+    query: string
+  ): Promise<ComboboxOption[]> => {
+    try {
+      const res = await fetch(
+        `/api/v1/companies?search=${encodeURIComponent(query)}&pageSize=20&archived=false`
+      );
+      const json = await res.json();
+      if (json.success && json.data) {
+        return json.data.map(
+          (c: { id: string; name: string; industry?: string }) => ({
+            id: c.id,
+            name: c.name,
+            subtext: c.industry || undefined,
+          })
+        );
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  };
 
   // Pipeline & Stage Fields
   const [pipelineId, setPipelineId] = useState<string>(
@@ -147,6 +189,7 @@ export function LeadForm({
       lastName: lastName.trim() || null,
       email: email.trim() || null,
       phone: phone.trim() || null,
+      companyId: companyId || null,
       source,
       status,
       assignedToUserId:
@@ -339,80 +382,100 @@ export function LeadForm({
           </div>
         </div>
 
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="source" className="text-xs font-semibold text-slate-700">
-              Lead source
-            </Label>
-            <Select
-              value={source}
-              onValueChange={(val) => {
-                if (val) setSource(val as LeadSource);
-              }}
-              disabled={loading}
-            >
-              <SelectTrigger id="source" className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Select source" />
-              </SelectTrigger>
-              <SelectContent>
-                {LEAD_SOURCES.map((src) => (
-                  <SelectItem key={src} value={src} className="text-xs">
-                    {LEAD_SOURCE_LABELS[src]}
+        <div className="p-6 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="source" className="text-xs font-semibold text-slate-700">
+                Lead source
+              </Label>
+              <Select
+                value={source}
+                onValueChange={(val) => {
+                  if (val) setSource(val as LeadSource);
+                }}
+                disabled={loading}
+              >
+                <SelectTrigger id="source" className="h-9 text-xs bg-white">
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEAD_SOURCES.map((src) => (
+                    <SelectItem key={src} value={src} className="text-xs">
+                      {LEAD_SOURCE_LABELS[src]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="status" className="text-xs font-semibold text-slate-700">
+                Lead status
+              </Label>
+              <Select
+                value={status}
+                onValueChange={(val) => {
+                  if (val) setStatus(val as LeadStatus);
+                }}
+                disabled={loading}
+              >
+                <SelectTrigger id="status" className="h-9 text-xs bg-white">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LEAD_STATUSES.map((st) => (
+                    <SelectItem key={st} value={st} className="text-xs">
+                      {LEAD_STATUS_LABELS[st]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="assignedTo" className="text-xs font-semibold text-slate-700">
+                Assigned to
+              </Label>
+              <Select
+                value={assignedToUserId}
+                onValueChange={(val) => {
+                  if (val) setAssignedToUserId(val);
+                }}
+                disabled={loading}
+              >
+                <SelectTrigger id="assignedTo" className="h-9 text-xs bg-white">
+                  <SelectValue placeholder="Assign to member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned" className="text-xs text-slate-500">
+                    Unassigned
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  {members.map((m) => (
+                    <SelectItem key={m.id} value={m.id} className="text-xs">
+                      {m.name} ({m.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="status" className="text-xs font-semibold text-slate-700">
-              Lead status
-            </Label>
-            <Select
-              value={status}
-              onValueChange={(val) => {
-                if (val) setStatus(val as LeadStatus);
-              }}
-              disabled={loading}
-            >
-              <SelectTrigger id="status" className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                {LEAD_STATUSES.map((st) => (
-                  <SelectItem key={st} value={st} className="text-xs">
-                    {LEAD_STATUS_LABELS[st]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="assignedTo" className="text-xs font-semibold text-slate-700">
-              Assigned to
-            </Label>
-            <Select
-              value={assignedToUserId}
-              onValueChange={(val) => {
-                if (val) setAssignedToUserId(val);
-              }}
-              disabled={loading}
-            >
-              <SelectTrigger id="assignedTo" className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Assign to member" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="unassigned" className="text-xs text-slate-500">
-                  Unassigned
-                </SelectItem>
-                {members.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-xs">
-                    {m.name} ({m.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="pt-4 border-t border-slate-100">
+            <div className="sm:w-1/2 space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <Building className="h-3 w-3 text-slate-400" />
+                Company (Optional)
+              </Label>
+              <EntityCombobox
+                value={companyId}
+                onChange={setCompanyId}
+                placeholder="Select company (optional)..."
+                searchPlaceholder="Search companies..."
+                clearLabel="No Company"
+                fetchOptions={fetchCompanyOptions}
+                initialOptions={initialCompanyOptions}
+              />
+            </div>
           </div>
         </div>
       </div>

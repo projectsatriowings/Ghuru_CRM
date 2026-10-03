@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/context/organization-context";
-import { getCompanyById } from "@/lib/services/company.service";
+import {
+  getCompanyById,
+  getCompanyContacts,
+  getCompanyLeads,
+} from "@/lib/services/company.service";
 import { CompanyDetailView } from "@/components/companies/company-detail-view";
 
 interface CompanyDetailPageProps {
@@ -21,18 +25,28 @@ export default async function CompanyDetailPage({
   const { id } = await params;
   const ctx = await requirePermission("companies.view");
 
-  let company;
+  let data;
   try {
-    company = await getCompanyById(ctx.organization.id, id);
+    data = await Promise.all([
+      getCompanyById(ctx.organization.id, id),
+      getCompanyContacts(ctx.organization.id, id),
+      getCompanyLeads(ctx.organization.id, id),
+    ]);
   } catch {
     notFound();
   }
 
+  const [company, contacts, leads] = data;
+
   return (
     <CompanyDetailView
       company={company}
+      contacts={contacts}
+      leads={leads}
       canUpdate={ctx.hasPermission("companies.update")}
       canDelete={ctx.hasPermission("companies.delete")}
+      canUpdateContacts={ctx.hasPermission("contacts.update")}
+      canUpdateLeads={ctx.hasPermission("leads.update")}
     />
   );
 }

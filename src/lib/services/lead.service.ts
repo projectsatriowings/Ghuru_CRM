@@ -4,6 +4,8 @@ import { leads } from "@/db/schema/leads";
 import { users } from "@/db/schema/users";
 import { organizationMembers } from "@/db/schema/organizations";
 import { pipelines, pipelineStages } from "@/db/schema/pipelines";
+import { companies } from "@/db/schema/companies";
+import { validateActiveCompany } from "@/lib/services/contact.service";
 import {
   eq,
   and,
@@ -204,12 +206,24 @@ export async function createLead(
     }
   }
 
+  // Validate company relationship (if provided)
+  let resolvedCompanyId: string | null = null;
+  if (validated.companyId && validated.companyId.trim() !== "") {
+    await validateActiveCompany(
+      organizationId,
+      validated.companyId.trim(),
+      dbInstance
+    );
+    resolvedCompanyId = validated.companyId.trim();
+  }
+
   // 4. Insert Lead record
   const leadId = crypto.randomUUID();
 
   await dbInstance.insert(leads).values({
     id: leadId,
     organizationId,
+    companyId: resolvedCompanyId,
     firstName: validated.firstName,
     lastName: validated.lastName ? validated.lastName.trim() : null,
     email: validated.email ? validated.email.trim() : null,
@@ -333,7 +347,7 @@ export async function getLeads(
   const orderClause =
     validated.sortDirection === "asc" ? asc(sortCol) : desc(sortCol);
 
-  // Data query with left join on users for assigned member details, pipelines, and stages
+  // Data query with left join on users for assigned member details, pipelines, stages, and companies
   const rows = await dbInstance
     .select({
       lead: leads,
@@ -352,11 +366,16 @@ export async function getLeads(
         name: pipelineStages.name,
         displayOrder: pipelineStages.displayOrder,
       },
+      company: {
+        id: companies.id,
+        name: companies.name,
+      },
     })
     .from(leads)
     .leftJoin(users, eq(leads.assignedToUserId, users.id))
     .leftJoin(pipelines, eq(leads.pipelineId, pipelines.id))
     .leftJoin(pipelineStages, eq(leads.stageId, pipelineStages.id))
+    .leftJoin(companies, eq(leads.companyId, companies.id))
     .where(and(...conditions))
     .orderBy(orderClause)
     .limit(validated.pageSize)
@@ -369,6 +388,7 @@ export async function getLeads(
     assignedToUser: r.assignedUser?.id ? r.assignedUser : null,
     pipeline: r.pipeline?.id ? r.pipeline : null,
     stage: r.stage?.id ? r.stage : null,
+    company: r.company?.id ? r.company : null,
   }));
 
   return {
@@ -383,7 +403,7 @@ export async function getLeads(
 }
 
 /**
- * Retrieves a single lead by ID, including assigned user and custom field values.
+ * Retrieves a single lead by ID, including assigned user, pipeline, stage, company, and custom field values.
  */
 export async function getLeadById(
   organizationId: string,
@@ -408,11 +428,16 @@ export async function getLeadById(
         name: pipelineStages.name,
         displayOrder: pipelineStages.displayOrder,
       },
+      company: {
+        id: companies.id,
+        name: companies.name,
+      },
     })
     .from(leads)
     .leftJoin(users, eq(leads.assignedToUserId, users.id))
     .leftJoin(pipelines, eq(leads.pipelineId, pipelines.id))
     .leftJoin(pipelineStages, eq(leads.stageId, pipelineStages.id))
+    .leftJoin(companies, eq(leads.companyId, companies.id))
     .where(
       and(eq(leads.organizationId, organizationId), eq(leads.id, leadId))
     )
@@ -442,6 +467,7 @@ export async function getLeadById(
     assignedToUser: row.assignedUser?.id ? row.assignedUser : null,
     pipeline: row.pipeline?.id ? row.pipeline : null,
     stage: row.stage?.id ? row.stage : null,
+    company: row.company?.id ? row.company : null,
     customFields,
     customFieldValues: customFieldEntries,
   };
@@ -488,6 +514,18 @@ export async function updateLead(
       assignedUserId = assignedId;
     } else {
       assignedUserId = null;
+    }
+  }
+
+  // 2b. Handle companyId change
+  let targetCompanyId: string | null | undefined = undefined;
+  if (validated.companyId !== undefined) {
+    if (validated.companyId && validated.companyId.trim() !== "") {
+      const cid = validated.companyId.trim();
+      await validateActiveCompany(organizationId, cid, dbInstance);
+      targetCompanyId = cid;
+    } else {
+      targetCompanyId = null;
     }
   }
 
@@ -574,6 +612,9 @@ export async function updateLead(
       ...(validated.status !== undefined ? { status: validated.status } : {}),
       ...(assignedUserId !== undefined
         ? { assignedToUserId: assignedUserId }
+        : {}),
+      ...(targetCompanyId !== undefined
+        ? { companyId: targetCompanyId }
         : {}),
       ...(targetPipelineId !== undefined
         ? { pipelineId: targetPipelineId }

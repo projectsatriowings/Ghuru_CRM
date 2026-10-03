@@ -64,6 +64,13 @@
       "when": 1791019432209,
       "tag": "0008_neat_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791022430872,
+      "tag": "0009_talented_bastion",
+      "breakpoints": true
     }
   ]
 }

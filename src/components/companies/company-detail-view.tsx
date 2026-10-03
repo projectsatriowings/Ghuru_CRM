@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type CompanyWithRelations } from "@/lib/types/companies";
 import { ArchiveCompanyDialog } from "./archive-company-dialog";
+import { CompanyContactsSection } from "./company-contacts-section";
+import { CompanyLeadsSection } from "./company-leads-section";
 import { CustomFieldValueDisplay } from "@/components/custom-fields/custom-field-renderer";
+import { type CompanyContactItem, type CompanyLeadItem } from "@/lib/types/companies";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
@@ -20,18 +23,27 @@ import {
   FileText,
   SlidersHorizontal,
   Building,
+  Star,
 } from "lucide-react";
 
 interface CompanyDetailViewProps {
   company: CompanyWithRelations;
+  contacts?: CompanyContactItem[];
+  leads?: CompanyLeadItem[];
   canUpdate: boolean;
   canDelete: boolean;
+  canUpdateContacts?: boolean;
+  canUpdateLeads?: boolean;
 }
 
 export function CompanyDetailView({
   company,
+  contacts = [],
+  leads = [],
   canUpdate,
   canDelete,
+  canUpdateContacts = true,
+  canUpdateLeads = true,
 }: CompanyDetailViewProps) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -281,6 +293,22 @@ export function CompanyDetailView({
               )}
             </div>
           </div>
+
+          {/* Contacts Section */}
+          <CompanyContactsSection
+            companyId={company.id}
+            companyName={company.name}
+            contacts={contacts}
+            canUpdateContacts={canUpdateContacts}
+          />
+
+          {/* Leads Section */}
+          <CompanyLeadsSection
+            companyId={company.id}
+            companyName={company.name}
+            leads={leads}
+            canUpdateLeads={canUpdateLeads}
+          />
         </div>
 
         {/* Right Column (Sidebar Summary) */}
@@ -314,6 +342,56 @@ export function CompanyDetailView({
                   Unassigned
                 </div>
               )}
+            </div>
+
+            {/* Primary Contact */}
+            <div>
+              <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider mb-1.5">
+                Primary Contact
+              </span>
+              {company.primaryContact ? (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50/60 border border-amber-200/60">
+                  <Star className="h-4 w-4 fill-amber-500 text-amber-500 shrink-0" />
+                  <div className="overflow-hidden">
+                    <Link
+                      href={`/contacts/${company.primaryContact.id}`}
+                      className="text-xs font-semibold text-slate-900 hover:text-blue-600 block truncate"
+                    >
+                      {company.primaryContact.firstName}{" "}
+                      {company.primaryContact.lastName || ""}
+                    </Link>
+                    {company.primaryContact.email && (
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {company.primaryContact.email}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-lg bg-slate-50 text-xs text-slate-400 italic border border-dashed border-slate-200">
+                  No primary contact
+                </div>
+              )}
+            </div>
+
+            {/* Relationship Counts */}
+            <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Contacts
+                </span>
+                <span className="text-base font-bold text-slate-900">
+                  {company.contactCount ?? contacts.length}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 text-center">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Leads
+                </span>
+                <span className="text-base font-bold text-slate-900">
+                  {company.leadCount ?? leads.length}
+                </span>
+              </div>
             </div>
 
             {/* Timestamps */}

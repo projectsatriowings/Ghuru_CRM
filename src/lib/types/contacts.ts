@@ -3,6 +3,8 @@ import type { CustomFieldDefinition } from "./custom-fields";
 export interface Contact {
   id: string;
   organizationId: string;
+  companyId: string | null;
+  isPrimaryContact: boolean;
   firstName: string;
   lastName: string | null;
   email: string | null;
@@ -21,8 +23,14 @@ export interface ContactOwnerUser {
   image?: string | null;
 }
 
+export interface ContactCompany {
+  id: string;
+  name: string;
+}
+
 export interface ContactWithRelations extends Contact {
   ownerUser?: ContactOwnerUser | null;
+  company?: ContactCompany | null;
   customFields?: Record<string, unknown>;
   customFieldValues?: Array<{
     field: CustomFieldDefinition;

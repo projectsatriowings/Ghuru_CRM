@@ -1,12 +1,16 @@
 import { db } from "@/db";
 import { DbClient } from "@/db/types";
 import { companies } from "@/db/schema/companies";
+import { contacts } from "@/db/schema/contacts";
+import { leads } from "@/db/schema/leads";
+import { pipelines, pipelineStages } from "@/db/schema/pipelines";
 import { users } from "@/db/schema/users";
 import { organizationMembers } from "@/db/schema/organizations";
 import {
   eq,
   and,
   or,
+  ne,
   ilike,
   isNull,
   isNotNull,
@@ -26,6 +30,8 @@ import {
 import {
   type CompanyWithRelations,
   type PaginatedCompaniesResult,
+  type CompanyContactItem,
+  type CompanyLeadItem,
 } from "@/lib/types/companies";
 import {
   getCustomFields,
@@ -305,9 +311,56 @@ export async function getCompanyById(
     customFields[entry.field.key] = entry.value;
   }
 
+  // Count active related contacts
+  const [contactCountRes] = await dbInstance
+    .select({ count: count() })
+    .from(contacts)
+    .where(
+      and(
+        eq(contacts.organizationId, organizationId),
+        eq(contacts.companyId, companyId),
+        isNull(contacts.archivedAt)
+      )
+    );
+
+  // Count active related leads
+  const [leadCountRes] = await dbInstance
+    .select({ count: count() })
+    .from(leads)
+    .where(
+      and(
+        eq(leads.organizationId, organizationId),
+        eq(leads.companyId, companyId),
+        isNull(leads.archivedAt)
+      )
+    );
+
+  // Find primary contact
+  const [primaryContactRow] = await dbInstance
+    .select({
+      id: contacts.id,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+      email: contacts.email,
+      phone: contacts.phone,
+    })
+    .from(contacts)
+    .where(
+      and(
+        eq(contacts.organizationId, organizationId),
+        eq(contacts.companyId, companyId),
+        eq(contacts.isPrimaryContact, true),
+        isNull(contacts.archivedAt)
+      )
+    )
+    .limit(1);
+
   return {
     ...row.company,
     ownerUser: row.ownerUser?.id ? row.ownerUser : null,
+    contactCount: Number(contactCountRes?.count || 0),
+    leadCount: Number(leadCountRes?.count || 0),
+    primaryContact: primaryContactRow || null,
     customFields,
     customFieldValues: customFieldEntries,
   };
@@ -487,4 +540,334 @@ export async function searchCompanies(
     dbInstance
   );
   return result.data;
+}
+
+/**
+ * Validates that a company belongs to the organization and is not archived.
+ */
+export async function validateCompanyForOrganization(
+  organizationId: string,
+  companyId: string,
+  dbInstance: DbClient = db as DbClient
+) {
+  const [comp] = await dbInstance
+    .select({
+      id: companies.id,
+      name: companies.name,
+      archivedAt: companies.archivedAt,
+    })
+    .from(companies)
+    .where(
+      and(
+        eq(companies.organizationId, organizationId),
+        eq(companies.id, companyId)
+      )
+    )
+    .limit(1);
+
+  if (!comp) {
+    throw new ValidationError("Company not found in this organization.");
+  }
+  if (comp.archivedAt !== null) {
+    throw new ValidationError("Archived companies cannot be assigned.");
+  }
+  return comp;
+}
+
+/**
+ * Retrieves all active contacts associated with a specific company.
+ */
+export async function getCompanyContacts(
+  organizationId: string,
+  companyId: string,
+  dbInstance: DbClient = db as DbClient
+): Promise<CompanyContactItem[]> {
+  await getCompanyById(organizationId, companyId, dbInstance);
+
+  const rows = await dbInstance
+    .select({
+      contact: contacts,
+      ownerUser: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+      },
+    })
+    .from(contacts)
+    .leftJoin(users, eq(contacts.ownerUserId, users.id))
+    .where(
+      and(
+        eq(contacts.organizationId, organizationId),
+        eq(contacts.companyId, companyId),
+        isNull(contacts.archivedAt)
+      )
+    )
+    .orderBy(desc(contacts.isPrimaryContact), asc(contacts.firstName));
+
+  return rows.map((r) => ({
+    id: r.contact.id,
+    firstName: r.contact.firstName,
+    lastName: r.contact.lastName,
+    email: r.contact.email,
+    phone: r.contact.phone,
+    isPrimaryContact: r.contact.isPrimaryContact,
+    ownerUser: r.ownerUser?.id ? r.ownerUser : null,
+    createdAt: r.contact.createdAt,
+  }));
+}
+
+/**
+ * Retrieves all active leads associated with a specific company.
+ */
+export async function getCompanyLeads(
+  organizationId: string,
+  companyId: string,
+  dbInstance: DbClient = db as DbClient
+): Promise<CompanyLeadItem[]> {
+  await getCompanyById(organizationId, companyId, dbInstance);
+
+  const rows = await dbInstance
+    .select({
+      lead: leads,
+      pipeline: {
+        id: pipelines.id,
+        name: pipelines.name,
+      },
+      stage: {
+        id: pipelineStages.id,
+        name: pipelineStages.name,
+      },
+      assignedUser: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+      },
+    })
+    .from(leads)
+    .leftJoin(users, eq(leads.assignedToUserId, users.id))
+    .leftJoin(pipelines, eq(leads.pipelineId, pipelines.id))
+    .leftJoin(pipelineStages, eq(leads.stageId, pipelineStages.id))
+    .where(
+      and(
+        eq(leads.organizationId, organizationId),
+        eq(leads.companyId, companyId),
+        isNull(leads.archivedAt)
+      )
+    )
+    .orderBy(desc(leads.createdAt));
+
+  return rows.map((r) => ({
+    id: r.lead.id,
+    firstName: r.lead.firstName,
+    lastName: r.lead.lastName,
+    email: r.lead.email,
+    phone: r.lead.phone,
+    status: r.lead.status,
+    pipeline: r.pipeline?.id ? r.pipeline : null,
+    stage: r.stage?.id ? r.stage : null,
+    assignedUser: r.assignedUser?.id ? r.assignedUser : null,
+    createdAt: r.lead.createdAt,
+  }));
+}
+
+/**
+ * Associates or removes a contact from a company, optionally setting primary contact status.
+ */
+export async function setContactCompany(
+  organizationId: string,
+  contactId: string,
+  companyId: string | null,
+  isPrimaryContact: boolean = false,
+  dbInstance: DbClient = db as DbClient
+) {
+  const [contact] = await dbInstance
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(
+      and(
+        eq(contacts.organizationId, organizationId),
+        eq(contacts.id, contactId)
+      )
+    )
+    .limit(1);
+
+  if (!contact) {
+    throw new NotFoundError("Contact not found in this organization.");
+  }
+
+  if (companyId) {
+    await validateCompanyForOrganization(organizationId, companyId, dbInstance);
+    if (isPrimaryContact) {
+      await dbInstance
+        .update(contacts)
+        .set({ isPrimaryContact: false })
+        .where(
+          and(
+            eq(contacts.organizationId, organizationId),
+            eq(contacts.companyId, companyId),
+            eq(contacts.isPrimaryContact, true),
+            ne(contacts.id, contactId)
+          )
+        );
+    }
+    await dbInstance
+      .update(contacts)
+      .set({
+        companyId,
+        isPrimaryContact,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(contacts.organizationId, organizationId),
+          eq(contacts.id, contactId)
+        )
+      );
+  } else {
+    await dbInstance
+      .update(contacts)
+      .set({
+        companyId: null,
+        isPrimaryContact: false,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(contacts.organizationId, organizationId),
+          eq(contacts.id, contactId)
+        )
+      );
+  }
+}
+
+/**
+ * Sets a specific contact as the primary contact for a company.
+ */
+export async function setPrimaryContact(
+  organizationId: string,
+  companyId: string,
+  contactId: string,
+  dbInstance: DbClient = db as DbClient
+) {
+  await validateCompanyForOrganization(organizationId, companyId, dbInstance);
+
+  const [contact] = await dbInstance
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(
+      and(
+        eq(contacts.organizationId, organizationId),
+        eq(contacts.id, contactId),
+        eq(contacts.companyId, companyId)
+      )
+    )
+    .limit(1);
+
+  if (!contact) {
+    throw new ValidationError("Contact does not belong to this company.");
+  }
+
+  // Reset other primary contacts for this company
+  await dbInstance
+    .update(contacts)
+    .set({ isPrimaryContact: false })
+    .where(
+      and(
+        eq(contacts.organizationId, organizationId),
+        eq(contacts.companyId, companyId),
+        eq(contacts.isPrimaryContact, true),
+        ne(contacts.id, contactId)
+      )
+    );
+
+  await dbInstance
+    .update(contacts)
+    .set({
+      isPrimaryContact: true,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(contacts.organizationId, organizationId),
+        eq(contacts.id, contactId)
+      )
+    );
+}
+
+/**
+ * Removes a contact from its associated company.
+ */
+export async function removeContactFromCompany(
+  organizationId: string,
+  contactId: string,
+  dbInstance: DbClient = db as DbClient
+) {
+  await setContactCompany(organizationId, contactId, null, false, dbInstance);
+}
+
+/**
+ * Associates or removes a lead from a company.
+ */
+export async function setLeadCompany(
+  organizationId: string,
+  leadId: string,
+  companyId: string | null,
+  dbInstance: DbClient = db as DbClient
+) {
+  const [lead] = await dbInstance
+    .select({ id: leads.id })
+    .from(leads)
+    .where(
+      and(
+        eq(leads.organizationId, organizationId),
+        eq(leads.id, leadId)
+      )
+    )
+    .limit(1);
+
+  if (!lead) {
+    throw new NotFoundError("Lead not found in this organization.");
+  }
+
+  if (companyId) {
+    await validateCompanyForOrganization(organizationId, companyId, dbInstance);
+    await dbInstance
+      .update(leads)
+      .set({
+        companyId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(leads.organizationId, organizationId),
+          eq(leads.id, leadId)
+        )
+      );
+  } else {
+    await dbInstance
+      .update(leads)
+      .set({
+        companyId: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(leads.organizationId, organizationId),
+          eq(leads.id, leadId)
+        )
+      );
+  }
+}
+
+/**
+ * Removes a lead from its associated company.
+ */
+export async function removeLeadFromCompany(
+  organizationId: string,
+  leadId: string,
+  dbInstance: DbClient = db as DbClient
+) {
+  await setLeadCompany(organizationId, leadId, null, dbInstance);
 }

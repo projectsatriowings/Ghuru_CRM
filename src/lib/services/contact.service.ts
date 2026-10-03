@@ -3,10 +3,12 @@ import { DbClient } from "@/db/types";
 import { contacts } from "@/db/schema/contacts";
 import { users } from "@/db/schema/users";
 import { organizationMembers } from "@/db/schema/organizations";
+import { companies } from "@/db/schema/companies";
 import {
   eq,
   and,
   or,
+  ne,
   ilike,
   isNull,
   isNotNull,
@@ -34,6 +36,40 @@ import {
 } from "@/lib/services/custom-field.service";
 import { validateCustomFieldValue } from "@/lib/validations/custom-field";
 import { NotFoundError, ValidationError } from "@/lib/errors";
+
+/**
+ * Validates that a company belongs to the organization and is not archived.
+ */
+export async function validateActiveCompany(
+  organizationId: string,
+  companyId: string,
+  dbInstance: DbClient = db as DbClient
+) {
+  const [comp] = await dbInstance
+    .select({
+      id: companies.id,
+      name: companies.name,
+      archivedAt: companies.archivedAt,
+    })
+    .from(companies)
+    .where(
+      and(
+        eq(companies.organizationId, organizationId),
+        eq(companies.id, companyId)
+      )
+    )
+    .limit(1);
+
+  if (!comp) {
+    throw new ValidationError("Selected company was not found in this organization.");
+  }
+
+  if (comp.archivedAt !== null) {
+    throw new ValidationError("Archived companies cannot be assigned.");
+  }
+
+  return comp;
+}
 
 /**
  * Creates a new Contact for an organization.
@@ -67,6 +103,34 @@ export async function createContact(
       throw new ValidationError(
         "Assigned owner does not belong to this organization."
       );
+    }
+  }
+
+  // 1b. Validate company relationship and primary contact status (if provided)
+  let resolvedCompanyId: string | null = null;
+  let isPrimary = false;
+
+  if (validated.companyId && validated.companyId.trim() !== "") {
+    await validateActiveCompany(
+      organizationId,
+      validated.companyId.trim(),
+      dbInstance
+    );
+    resolvedCompanyId = validated.companyId.trim();
+
+    if (validated.isPrimaryContact) {
+      // Clear existing primary contact for this company in this organization
+      await dbInstance
+        .update(contacts)
+        .set({ isPrimaryContact: false })
+        .where(
+          and(
+            eq(contacts.organizationId, organizationId),
+            eq(contacts.companyId, resolvedCompanyId),
+            eq(contacts.isPrimaryContact, true)
+          )
+        );
+      isPrimary = true;
     }
   }
 
@@ -124,6 +188,8 @@ export async function createContact(
   await dbInstance.insert(contacts).values({
     id: contactId,
     organizationId,
+    companyId: resolvedCompanyId,
+    isPrimaryContact: isPrimary,
     firstName: validated.firstName,
     lastName: validated.lastName ? validated.lastName.trim() : null,
     email: validated.email ? validated.email.trim() : null,
@@ -217,7 +283,7 @@ export async function getContacts(
   const orderClause =
     validated.sortDirection === "asc" ? asc(sortCol) : desc(sortCol);
 
-  // Data query with left join on users for owner details
+  // Data query with left join on users and companies
   const rows = await dbInstance
     .select({
       contact: contacts,
@@ -227,9 +293,14 @@ export async function getContacts(
         email: users.email,
         image: users.image,
       },
+      company: {
+        id: companies.id,
+        name: companies.name,
+      },
     })
     .from(contacts)
     .leftJoin(users, eq(contacts.ownerUserId, users.id))
+    .leftJoin(companies, eq(contacts.companyId, companies.id))
     .where(and(...conditions))
     .orderBy(orderClause)
     .limit(validated.pageSize)
@@ -238,6 +309,7 @@ export async function getContacts(
   const data: ContactWithRelations[] = rows.map((r) => ({
     ...r.contact,
     ownerUser: r.ownerUser?.id ? r.ownerUser : null,
+    company: r.company?.id ? r.company : null,
   }));
 
   return {
@@ -252,7 +324,7 @@ export async function getContacts(
 }
 
 /**
- * Retrieves a single contact by ID, including owner and custom field values.
+ * Retrieves a single contact by ID, including owner, company, and custom field values.
  */
 export async function getContactById(
   organizationId: string,
@@ -268,9 +340,14 @@ export async function getContactById(
         email: users.email,
         image: users.image,
       },
+      company: {
+        id: companies.id,
+        name: companies.name,
+      },
     })
     .from(contacts)
     .leftJoin(users, eq(contacts.ownerUserId, users.id))
+    .leftJoin(companies, eq(contacts.companyId, companies.id))
     .where(
       and(
         eq(contacts.organizationId, organizationId),
@@ -299,6 +376,7 @@ export async function getContactById(
   return {
     ...row.contact,
     ownerUser: row.ownerUser?.id ? row.ownerUser : null,
+    company: row.company?.id ? row.company : null,
     customFields,
     customFieldValues: customFieldEntries,
   };
@@ -314,7 +392,11 @@ export async function updateContact(
   dbInstance: DbClient = db as DbClient
 ): Promise<ContactWithRelations> {
   // 1. Ensure contact exists in this organization
-  await getContactById(organizationId, contactId, dbInstance);
+  const existingContact = await getContactById(
+    organizationId,
+    contactId,
+    dbInstance
+  );
 
   const validated = updateContactSchema.parse(input);
 
@@ -343,6 +425,57 @@ export async function updateContact(
     } else {
       ownerId = null;
     }
+  }
+
+  // 2b. Handle companyId and isPrimaryContact changes
+  let updatedCompanyId: string | null | undefined = undefined;
+  let updatedIsPrimary: boolean | undefined = undefined;
+
+  if (validated.companyId !== undefined) {
+    if (validated.companyId && validated.companyId.trim() !== "") {
+      const cid = validated.companyId.trim();
+      await validateActiveCompany(organizationId, cid, dbInstance);
+      updatedCompanyId = cid;
+    } else {
+      updatedCompanyId = null;
+      updatedIsPrimary = false; // removing company automatically removes primary status
+    }
+  }
+
+  const effectiveCompanyId =
+    updatedCompanyId !== undefined
+      ? updatedCompanyId
+      : existingContact.companyId;
+
+  if (validated.isPrimaryContact !== undefined) {
+    if (validated.isPrimaryContact) {
+      if (!effectiveCompanyId) {
+        throw new ValidationError(
+          "Primary contact requires a company to be assigned."
+        );
+      }
+      // Unset previous primary contact for this company in this organization
+      await dbInstance
+        .update(contacts)
+        .set({ isPrimaryContact: false })
+        .where(
+          and(
+            eq(contacts.organizationId, organizationId),
+            eq(contacts.companyId, effectiveCompanyId),
+            eq(contacts.isPrimaryContact, true),
+            ne(contacts.id, contactId)
+          )
+        );
+      updatedIsPrimary = true;
+    } else {
+      updatedIsPrimary = false;
+    }
+  } else if (
+    updatedCompanyId !== undefined &&
+    updatedCompanyId !== existingContact.companyId &&
+    updatedCompanyId === null
+  ) {
+    updatedIsPrimary = false;
   }
 
   // 3. Validate and update custom fields (if provided)
@@ -392,6 +525,10 @@ export async function updateContact(
         ? { phone: validated.phone ? validated.phone.trim() : null }
         : {}),
       ...(ownerId !== undefined ? { ownerUserId: ownerId } : {}),
+      ...(updatedCompanyId !== undefined ? { companyId: updatedCompanyId } : {}),
+      ...(updatedIsPrimary !== undefined
+        ? { isPrimaryContact: updatedIsPrimary }
+        : {}),
       ...(validated.notes !== undefined
         ? { notes: validated.notes ? validated.notes.trim() : null }
         : {}),

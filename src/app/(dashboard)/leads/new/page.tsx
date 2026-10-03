@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/context/organization-context";
 import { getCustomFields } from "@/lib/services/custom-field.service";
 import { getOrganizationMembers } from "@/lib/services/user.service";
 import { getActivePipelinesWithStages } from "@/lib/services/pipeline.service";
+import { getCompanies } from "@/lib/services/company.service";
 import { LeadForm } from "@/components/leads/lead-form";
 
 export const metadata = {
@@ -12,19 +13,26 @@ export const metadata = {
 export default async function CreateLeadPage() {
   const ctx = await requirePermission("leads.create");
 
-  const [customFields, membersResult, pipelines] = await Promise.all([
-    getCustomFields(ctx.organization.id, {
-      entityType: "lead",
-      active: true,
-    }),
-    getOrganizationMembers(ctx.organization.id),
-    getActivePipelinesWithStages(ctx.organization.id),
-  ]);
+  const [customFields, membersResult, pipelines, companiesResult] =
+    await Promise.all([
+      getCustomFields(ctx.organization.id, {
+        entityType: "lead",
+        active: true,
+      }),
+      getOrganizationMembers(ctx.organization.id),
+      getActivePipelinesWithStages(ctx.organization.id),
+      getCompanies(ctx.organization.id, { pageSize: 20, archived: "false" }),
+    ]);
 
   const members = membersResult.map((m) => ({
     id: m.userId,
     name: m.name,
     email: m.email,
+  }));
+
+  const companies = companiesResult.data.map((c) => ({
+    id: c.id,
+    name: c.name,
   }));
 
   return (
@@ -33,6 +41,7 @@ export default async function CreateLeadPage() {
       pipelines={pipelines}
       customFieldDefinitions={customFields}
       members={members}
+      companies={companies}
     />
   );
 }

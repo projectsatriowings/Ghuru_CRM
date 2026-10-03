@@ -49,6 +49,7 @@ describe("Milestone 2.3B — Follow-ups & Next Action Test Suite", () => {
       "0006_new_kinsey_walden.sql",
       "0007_shiny_hellcat.sql",
       "0008_neat_terrax.sql",
+      "0009_talented_bastion.sql",
     ];
 
     for (const file of migrationFiles) {

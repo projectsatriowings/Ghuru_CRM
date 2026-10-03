@@ -1,7 +1,15 @@
-import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import {
+  pgTable,
+  text,
+  timestamp,
+  index,
+  boolean,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { users } from "./users";
+import { companies } from "./companies";
 
 export const contacts = pgTable(
   "contacts",
@@ -10,6 +18,10 @@ export const contacts = pgTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
+    companyId: text("company_id").references(() => companies.id, {
+      onDelete: "set null",
+    }),
+    isPrimaryContact: boolean("is_primary_contact").notNull().default(false),
     firstName: text("first_name").notNull(),
     lastName: text("last_name"),
     email: text("email"),
@@ -33,6 +45,11 @@ export const contacts = pgTable(
     index("contacts_org_created_idx").on(table.organizationId, table.createdAt),
     index("contacts_created_at_idx").on(table.createdAt),
     index("contacts_updated_at_idx").on(table.updatedAt),
+    index("contacts_org_company_idx").on(table.organizationId, table.companyId),
+    index("contacts_company_idx").on(table.companyId),
+    uniqueIndex("contacts_company_primary_idx")
+      .on(table.companyId)
+      .where(sql`${table.isPrimaryContact} = true AND ${table.companyId} IS NOT NULL`),
   ]
 );
 
@@ -44,5 +61,9 @@ export const contactsRelations = relations(contacts, ({ one }) => ({
   owner: one(users, {
     fields: [contacts.ownerUserId],
     references: [users.id],
+  }),
+  company: one(companies, {
+    fields: [contacts.companyId],
+    references: [companies.id],
   }),
 }));

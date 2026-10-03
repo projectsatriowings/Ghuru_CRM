@@ -64,6 +64,7 @@ describe("Milestone 2.4B — Lead Pipeline & Stage Assignment Test Suite", () =>
       "0006_new_kinsey_walden.sql",
       "0007_shiny_hellcat.sql",
       "0008_neat_terrax.sql",
+      "0009_talented_bastion.sql",
     ];
 
     for (const file of migrationFiles) {

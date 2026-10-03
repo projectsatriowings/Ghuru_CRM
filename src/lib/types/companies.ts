@@ -25,11 +25,44 @@ export interface CompanyOwnerUser {
 
 export interface CompanyWithRelations extends Company {
   ownerUser?: CompanyOwnerUser | null;
+  contactCount?: number;
+  leadCount?: number;
+  primaryContact?: {
+    id: string;
+    firstName: string;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null;
   customFields?: Record<string, unknown>;
   customFieldValues?: Array<{
     field: CustomFieldDefinition;
     value: unknown;
   }>;
+}
+
+export interface CompanyContactItem {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  isPrimaryContact: boolean;
+  ownerUser?: CompanyOwnerUser | null;
+  createdAt: Date;
+}
+
+export interface CompanyLeadItem {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  status: string;
+  pipeline?: { id: string; name: string } | null;
+  stage?: { id: string; name: string } | null;
+  assignedUser?: CompanyOwnerUser | null;
+  createdAt: Date;
 }
 
 export interface CompanyPagination {

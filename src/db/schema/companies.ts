@@ -2,6 +2,8 @@ import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { users } from "./users";
+import { contacts } from "./contacts";
+import { leads } from "./leads";
 
 export const companies = pgTable(
   "companies",
@@ -38,7 +40,7 @@ export const companies = pgTable(
   ]
 );
 
-export const companiesRelations = relations(companies, ({ one }) => ({
+export const companiesRelations = relations(companies, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [companies.organizationId],
     references: [organizations.id],
@@ -47,4 +49,6 @@ export const companiesRelations = relations(companies, ({ one }) => ({
     fields: [companies.ownerUserId],
     references: [users.id],
   }),
+  contacts: many(contacts),
+  leads: many(leads),
 }));

@@ -51,6 +51,7 @@ export const createLeadSchema = z.object({
   source: leadSourceSchema.default("other"),
   status: leadStatusSchema.default("new"),
   assignedToUserId: z.string().nullable().optional().or(z.literal("")),
+  companyId: z.string().trim().nullable().optional().or(z.literal("")),
   pipelineId: z.string().nullable().optional().or(z.literal("")),
   stageId: z.string().nullable().optional().or(z.literal("")),
   notes: z
@@ -81,6 +82,7 @@ export const updateLeadSchema = z.object({
   source: leadSourceSchema.optional(),
   status: leadStatusSchema.optional(),
   assignedToUserId: z.string().nullable().optional().or(z.literal("")),
+  companyId: z.string().trim().nullable().optional().or(z.literal("")),
   pipelineId: z.string().nullable().optional().or(z.literal("")),
   stageId: z.string().nullable().optional().or(z.literal("")),
   notes: z

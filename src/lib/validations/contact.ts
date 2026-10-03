@@ -29,30 +29,45 @@ export const emailValidationSchema = z
   .optional()
   .or(z.literal(""));
 
-export const createContactSchema = z.object({
-  firstName: z
-    .string()
-    .trim()
-    .min(1, "First name is required")
-    .max(100, "First name must not exceed 100 characters"),
-  lastName: z
-    .string()
-    .trim()
-    .max(100, "Last name must not exceed 100 characters")
-    .nullable()
-    .optional()
-    .or(z.literal("")),
-  email: emailValidationSchema,
-  phone: phoneValidationSchema,
-  ownerUserId: z.string().nullable().optional().or(z.literal("")),
-  notes: z
-    .string()
-    .max(5000, "Notes must not exceed 5000 characters")
-    .nullable()
-    .optional()
-    .or(z.literal("")),
-  customFields: z.record(z.string(), z.unknown()).default({}),
-});
+export const createContactSchema = z
+  .object({
+    firstName: z
+      .string()
+      .trim()
+      .min(1, "First name is required")
+      .max(100, "First name must not exceed 100 characters"),
+    lastName: z
+      .string()
+      .trim()
+      .max(100, "Last name must not exceed 100 characters")
+      .nullable()
+      .optional()
+      .or(z.literal("")),
+    email: emailValidationSchema,
+    phone: phoneValidationSchema,
+    companyId: z.string().trim().nullable().optional().or(z.literal("")),
+    isPrimaryContact: z.boolean().default(false),
+    ownerUserId: z.string().nullable().optional().or(z.literal("")),
+    notes: z
+      .string()
+      .max(5000, "Notes must not exceed 5000 characters")
+      .nullable()
+      .optional()
+      .or(z.literal("")),
+    customFields: z.record(z.string(), z.unknown()).default({}),
+  })
+  .refine(
+    (data) => {
+      if (data.isPrimaryContact) {
+        return !!data.companyId && data.companyId.trim() !== "";
+      }
+      return true;
+    },
+    {
+      message: "Primary contact requires a company to be assigned.",
+      path: ["isPrimaryContact"],
+    }
+  );
 
 export const updateContactSchema = z.object({
   firstName: z
@@ -70,6 +85,8 @@ export const updateContactSchema = z.object({
     .or(z.literal("")),
   email: emailValidationSchema,
   phone: phoneValidationSchema,
+  companyId: z.string().trim().nullable().optional().or(z.literal("")),
+  isPrimaryContact: z.boolean().optional(),
   ownerUserId: z.string().nullable().optional().or(z.literal("")),
   notes: z
     .string()

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ContactWithRelations } from "@/lib/types/contacts";
+import { ContactCompanyCard } from "./contact-company-card";
 import { ArchiveContactDialog } from "./archive-contact-dialog";
 import { CustomFieldValueDisplay } from "@/components/custom-fields/custom-field-renderer";
 import { Button } from "@/components/ui/button";
@@ -253,6 +254,8 @@ export function ContactDetailView({
 
         {/* Right Column (Sidebar Summary) */}
         <div className="space-y-6">
+          <ContactCompanyCard contact={contact} canUpdate={canUpdate} />
+
           <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 space-y-5">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-3 border-b border-slate-100">
               Contact Overview
