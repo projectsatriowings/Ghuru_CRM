@@ -71,6 +71,13 @@
       "when": 1791022430872,
       "tag": "0009_talented_bastion",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791025428968,
+      "tag": "0010_amused_gambit",
+      "breakpoints": true
     }
   ]
 }

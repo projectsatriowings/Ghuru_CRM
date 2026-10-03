@@ -14,12 +14,15 @@ import { LeadStatusBadge } from "./lead-status-badge";
 import { ArchiveLeadDialog } from "./archive-lead-dialog";
 import { LeadPipelineCard } from "./lead-pipeline-card";
 import { LeadCompanyCard } from "./lead-company-card";
+import { ConvertLeadDialog } from "./convert-lead-dialog";
 import { ActivityTimeline } from "@/components/activities/activity-timeline";
 import { FollowUpSection } from "@/components/follow-ups/follow-up-section";
 import { CustomFieldValueDisplay } from "@/components/custom-fields/custom-field-renderer";
+import { type ComboboxOption } from "@/components/common/entity-combobox";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
+  ArrowRightLeft,
   Edit2,
   Archive,
   RotateCcw,
@@ -30,6 +33,7 @@ import {
   Clock,
   FileText,
   SlidersHorizontal,
+  ExternalLink,
 } from "lucide-react";
 
 interface LeadDetailViewProps {
@@ -41,6 +45,8 @@ interface LeadDetailViewProps {
   currentUserId?: string;
   canUpdate: boolean;
   canDelete: boolean;
+  canConvert?: boolean;
+  fetchContacts?: (query: string) => Promise<ComboboxOption[]>;
   canViewActivities?: boolean;
   canCreateActivity?: boolean;
   canUpdateActivity?: boolean;
@@ -60,6 +66,8 @@ export function LeadDetailView({
   currentUserId,
   canUpdate,
   canDelete,
+  canConvert = canUpdate,
+  fetchContacts,
   canViewActivities = true,
   canCreateActivity = true,
   canUpdateActivity = true,
@@ -72,9 +80,11 @@ export function LeadDetailView({
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"archive" | "restore">("archive");
+  const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
 
   const fullName = `${lead.firstName} ${lead.lastName || ""}`.trim();
   const isArchived = Boolean(lead.archivedAt);
+  const isConverted = lead.status === "converted" || Boolean(lead.contactId);
 
   return (
     <div className="space-y-6 max-w-5xl pb-16">
@@ -93,6 +103,16 @@ export function LeadDetailView({
                 {fullName}
               </h1>
               <LeadStatusBadge status={lead.status} />
+              {lead.contact && (
+                <Link
+                  href={`/contacts/${lead.contact.id}`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 transition-colors"
+                >
+                  <User className="h-3 w-3" />
+                  <span>Contact: {lead.contact.firstName} {lead.contact.lastName || ""}</span>
+                  <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                </Link>
+              )}
               {isArchived && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
                   Archived
@@ -106,6 +126,17 @@ export function LeadDetailView({
         </div>
 
         <div className="flex items-center gap-2.5">
+          {canConvert && !isArchived && !isConverted && (
+            <Button
+              id="convert-lead-btn"
+              onClick={() => setIsConvertDialogOpen(true)}
+              className="h-9 px-3.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 shadow-sm rounded-lg gap-1.5 transition-colors"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              Convert Lead
+            </Button>
+          )}
+
           {canUpdate && (
             <Link href={`/leads/${lead.id}/edit`}>
               <Button
@@ -324,6 +355,44 @@ export function LeadDetailView({
 
           <LeadCompanyCard lead={lead} canUpdate={canUpdate} />
 
+          {/* Converted Contact Card */}
+          {lead.contact && (
+            <div className="bg-white rounded-xl border border-purple-200/80 shadow-xs p-5 space-y-3 bg-purple-50/20">
+              <div className="flex items-center justify-between pb-3 border-b border-purple-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center">
+                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Converted Contact
+                  </h3>
+                </div>
+                <Link
+                  href={`/contacts/${lead.contact.id}`}
+                  className="text-xs font-medium text-purple-600 hover:text-purple-700 inline-flex items-center gap-1"
+                >
+                  View <ExternalLink className="h-3 w-3" />
+                </Link>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                  {lead.contact.firstName.charAt(0).toUpperCase()}
+                </div>
+                <div className="overflow-hidden">
+                  <Link
+                    href={`/contacts/${lead.contact.id}`}
+                    className="text-xs font-bold text-slate-900 hover:underline block truncate"
+                  >
+                    {lead.contact.firstName} {lead.contact.lastName || ""}
+                  </Link>
+                  {lead.contact.email && (
+                    <p className="text-[11px] text-slate-500 truncate">{lead.contact.email}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 space-y-5">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-3 border-b border-slate-100">
               Lead Overview
@@ -426,6 +495,18 @@ export function LeadDetailView({
           setIsDialogOpen(false);
           router.refresh();
         }}
+      />
+
+      {/* Convert Lead Dialog */}
+      <ConvertLeadDialog
+        open={isConvertDialogOpen}
+        onOpenChange={setIsConvertDialogOpen}
+        lead={lead}
+        onSuccess={() => {
+          setIsConvertDialogOpen(false);
+          router.refresh();
+        }}
+        fetchContacts={fetchContacts}
       />
     </div>
   );

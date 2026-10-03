@@ -53,6 +53,7 @@ describe("Milestone 2.4A — Pipelines & Stages Foundation Test Suite", () => {
       "0007_shiny_hellcat.sql",
       "0008_neat_terrax.sql",
       "0009_talented_bastion.sql",
+      "0010_amused_gambit.sql",
     ];
 
     for (const file of migrationFiles) {

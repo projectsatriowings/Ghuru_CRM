@@ -104,6 +104,7 @@ export interface Lead {
   id: string;
   organizationId: string;
   companyId?: string | null;
+  contactId?: string | null;
   firstName: string;
   lastName: string | null;
   email: string | null;
@@ -142,11 +143,19 @@ export interface LeadCompanySummary {
   name: string;
 }
 
+export interface LeadContactSummary {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+}
+
 export interface LeadWithRelations extends Lead {
   assignedToUser?: LeadAssignedUser | null;
   pipeline?: LeadPipelineSummary | null;
   stage?: LeadStageSummary | null;
   company?: LeadCompanySummary | null;
+  contact?: LeadContactSummary | null;
   customFields?: Record<string, unknown>;
   customFieldValues?: Array<{
     field: CustomFieldDefinition;

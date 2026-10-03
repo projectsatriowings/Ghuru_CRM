@@ -62,6 +62,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       currentUserId={ctx.user.id}
       canUpdate={ctx.hasPermission("leads.update")}
       canDelete={ctx.hasPermission("leads.delete")}
+      canConvert={ctx.hasPermission("leads.update")}
       canViewActivities={canViewActivities}
       canCreateActivity={ctx.hasPermission("activities.create")}
       canUpdateActivity={ctx.hasPermission("activities.update")}

@@ -4,6 +4,7 @@ import { organizations } from "./organizations";
 import { users } from "./users";
 import { pipelines, pipelineStages } from "./pipelines";
 import { companies } from "./companies";
+import { contacts } from "./contacts";
 
 export const leads = pgTable(
   "leads",
@@ -13,6 +14,9 @@ export const leads = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     companyId: text("company_id").references(() => companies.id, {
+      onDelete: "set null",
+    }),
+    contactId: text("contact_id").references(() => contacts.id, {
       onDelete: "set null",
     }),
     firstName: text("first_name").notNull(),
@@ -61,6 +65,8 @@ export const leads = pgTable(
     index("leads_org_archived_idx").on(table.organizationId, table.archivedAt),
     index("leads_org_company_idx").on(table.organizationId, table.companyId),
     index("leads_company_idx").on(table.companyId),
+    index("leads_org_contact_idx").on(table.organizationId, table.contactId),
+    index("leads_contact_idx").on(table.contactId),
   ]
 );
 
@@ -84,5 +90,9 @@ export const leadsRelations = relations(leads, ({ one }) => ({
   company: one(companies, {
     fields: [leads.companyId],
     references: [companies.id],
+  }),
+  contact: one(contacts, {
+    fields: [leads.contactId],
+    references: [contacts.id],
   }),
 }));

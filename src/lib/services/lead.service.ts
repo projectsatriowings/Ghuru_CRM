@@ -5,6 +5,8 @@ import { users } from "@/db/schema/users";
 import { organizationMembers } from "@/db/schema/organizations";
 import { pipelines, pipelineStages } from "@/db/schema/pipelines";
 import { companies } from "@/db/schema/companies";
+import { contacts } from "@/db/schema/contacts";
+import { activities } from "@/db/schema/activities";
 import { validateActiveCompany } from "@/lib/services/contact.service";
 import {
   eq,
@@ -347,7 +349,7 @@ export async function getLeads(
   const orderClause =
     validated.sortDirection === "asc" ? asc(sortCol) : desc(sortCol);
 
-  // Data query with left join on users for assigned member details, pipelines, stages, and companies
+  // Data query with left join on users for assigned member details, pipelines, stages, companies, and contacts
   const rows = await dbInstance
     .select({
       lead: leads,
@@ -370,12 +372,19 @@ export async function getLeads(
         id: companies.id,
         name: companies.name,
       },
+      contact: {
+        id: contacts.id,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        email: contacts.email,
+      },
     })
     .from(leads)
     .leftJoin(users, eq(leads.assignedToUserId, users.id))
     .leftJoin(pipelines, eq(leads.pipelineId, pipelines.id))
     .leftJoin(pipelineStages, eq(leads.stageId, pipelineStages.id))
     .leftJoin(companies, eq(leads.companyId, companies.id))
+    .leftJoin(contacts, eq(leads.contactId, contacts.id))
     .where(and(...conditions))
     .orderBy(orderClause)
     .limit(validated.pageSize)
@@ -389,6 +398,7 @@ export async function getLeads(
     pipeline: r.pipeline?.id ? r.pipeline : null,
     stage: r.stage?.id ? r.stage : null,
     company: r.company?.id ? r.company : null,
+    contact: r.contact?.id ? r.contact : null,
   }));
 
   return {
@@ -432,12 +442,19 @@ export async function getLeadById(
         id: companies.id,
         name: companies.name,
       },
+      contact: {
+        id: contacts.id,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        email: contacts.email,
+      },
     })
     .from(leads)
     .leftJoin(users, eq(leads.assignedToUserId, users.id))
     .leftJoin(pipelines, eq(leads.pipelineId, pipelines.id))
     .leftJoin(pipelineStages, eq(leads.stageId, pipelineStages.id))
     .leftJoin(companies, eq(leads.companyId, companies.id))
+    .leftJoin(contacts, eq(leads.contactId, contacts.id))
     .where(
       and(eq(leads.organizationId, organizationId), eq(leads.id, leadId))
     )
@@ -468,6 +485,7 @@ export async function getLeadById(
     pipeline: row.pipeline?.id ? row.pipeline : null,
     stage: row.stage?.id ? row.stage : null,
     company: row.company?.id ? row.company : null,
+    contact: row.contact?.id ? row.contact : null,
     customFields,
     customFieldValues: customFieldEntries,
   };
@@ -678,4 +696,377 @@ export async function restoreLead(
     );
 
   return getLeadById(organizationId, leadId, dbInstance);
+}
+
+// ---------------------------------------------------------------------------
+// Milestone 2.5D — Lead → Contact Conversion
+// ---------------------------------------------------------------------------
+
+export interface DuplicateContactResult {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+/**
+ * Searches for potential duplicate contacts within the organization
+ * based on email and/or phone match (active contacts only).
+ */
+export async function findDuplicateContacts(
+  organizationId: string,
+  email: string | null | undefined,
+  phone: string | null | undefined,
+  dbInstance: DbClient = db as DbClient
+): Promise<DuplicateContactResult[]> {
+  if (!email && !phone) return [];
+
+  const conditions = [eq(contacts.organizationId, organizationId), isNull(contacts.archivedAt)];
+
+  const matchClauses = [];
+  if (email && email.trim() !== "") {
+    matchClauses.push(eq(contacts.email, email.trim().toLowerCase()));
+  }
+  if (phone && phone.trim() !== "") {
+    matchClauses.push(eq(contacts.phone, phone.trim()));
+  }
+
+  if (matchClauses.length === 0) return [];
+
+  conditions.push(or(...matchClauses)!);
+
+  const rows = await dbInstance
+    .select({
+      id: contacts.id,
+      firstName: contacts.firstName,
+      lastName: contacts.lastName,
+      email: contacts.email,
+      phone: contacts.phone,
+    })
+    .from(contacts)
+    .where(and(...conditions))
+    .limit(10);
+
+  return rows;
+}
+
+export interface ConvertLeadInput {
+  /** "create_new" — create a new Contact from the lead's data.
+   *  "link_existing" — link to an already-existing Contact in the same org. */
+  mode: "create_new" | "link_existing";
+  /** Required when mode === "link_existing". Must belong to the same org. */
+  existingContactId?: string;
+  /** When mode === "create_new": skip duplicate-contact guard. Default false. */
+  skipDuplicateCheck?: boolean;
+  /** Override first name for the new contact (defaults to lead's first name). */
+  overrideFirstName?: string;
+  /** Override last name for the new contact (defaults to lead's last name). */
+  overrideLastName?: string;
+  /** Override email for the new contact (defaults to lead's email). */
+  overrideEmail?: string;
+  /** Override phone for the new contact (defaults to lead's phone). */
+  overridePhone?: string;
+  /** Notes to accompany the conversion activity record. */
+  conversionNotes?: string;
+}
+
+export interface ConvertLeadResult {
+  lead: LeadWithRelations;
+  contactId: string;
+  /** Set when duplicates were found and the caller should be warned. */
+  duplicates?: DuplicateContactResult[];
+}
+
+/**
+ * Converts a Lead to a Contact in a single atomic database transaction.
+ *
+ * Supported modes:
+ * - "create_new": Creates a new Contact from the Lead's data (with optional
+ *   duplicate guard). Marks the lead as converted and links contactId.
+ * - "link_existing": Links an existing Contact to the Lead. Marks the lead
+ *   as converted and links contactId.
+ *
+ * In both modes a "note" Activity is created as a conversion audit trail.
+ * If any step fails the entire transaction is rolled back.
+ */
+export async function convertLead(
+  organizationId: string,
+  leadId: string,
+  actorUserId: string,
+  input: ConvertLeadInput,
+  dbInstance: DbClient = db as DbClient
+): Promise<ConvertLeadResult> {
+  // 1. Fetch and validate the lead (tenant isolation, not already converted, not archived)
+  const existingLead = await getLeadById(organizationId, leadId, dbInstance);
+
+  if (existingLead.archivedAt) {
+    throw new ValidationError("Archived leads cannot be converted.");
+  }
+
+  if (existingLead.status === "converted" && existingLead.contactId) {
+    throw new ValidationError("This lead has already been converted to a contact.");
+  }
+
+  let duplicatesToReturn: DuplicateContactResult[] | undefined;
+  let contactId: string;
+
+  if (input.mode === "create_new") {
+    // 2a. Optionally check for duplicates before creating
+    if (!input.skipDuplicateCheck) {
+      const targetEmail = input.overrideEmail ?? existingLead.email;
+      const targetPhone = input.overridePhone ?? existingLead.phone;
+      const dups = await findDuplicateContacts(
+        organizationId,
+        targetEmail,
+        targetPhone,
+        dbInstance
+      );
+
+      if (dups.length > 0) {
+        // Surface duplicates — caller must explicitly re-submit with skipDuplicateCheck=true
+        duplicatesToReturn = dups;
+        // Return early before any mutation; no transaction needed
+        return {
+          lead: existingLead,
+          contactId: "",
+          duplicates: duplicatesToReturn,
+        };
+      }
+    }
+
+    // 3a. Execute atomic conversion — create contact + update lead + create activity
+    const newContactId = crypto.randomUUID();
+
+    const firstName = (input.overrideFirstName ?? existingLead.firstName).trim();
+    const lastName = input.overrideLastName !== undefined
+      ? (input.overrideLastName?.trim() || null)
+      : (existingLead.lastName ? existingLead.lastName.trim() : null);
+    const email = input.overrideEmail !== undefined
+      ? (input.overrideEmail?.trim().toLowerCase() || null)
+      : (existingLead.email ? existingLead.email.trim().toLowerCase() : null);
+    const phone = input.overridePhone !== undefined
+      ? (input.overridePhone?.trim() || null)
+      : (existingLead.phone ? existingLead.phone.trim() : null);
+
+    if (!firstName) {
+      throw new ValidationError("Contact first name cannot be empty.");
+    }
+
+    const now = new Date();
+    const activityId = crypto.randomUUID();
+    const convNotes = input.conversionNotes?.trim();
+    const convDescription = convNotes
+      ? `Converted to contact. Notes: ${convNotes}`
+      : `Lead was converted to a new contact (${firstName}${lastName ? ` ${lastName}` : ""}).`;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = dbInstance as any;
+    if ("batch" in client && typeof client.batch === "function") {
+      // Neon HTTP — execute in one atomic batch request
+      await client.batch([
+        dbInstance.insert(contacts).values({
+          id: newContactId,
+          organizationId,
+          firstName,
+          lastName,
+          email,
+          phone,
+          companyId: existingLead.companyId ?? null,
+          isPrimaryContact: false,
+          ownerUserId: existingLead.assignedToUserId ?? null,
+          notes: null,
+          createdAt: now,
+          updatedAt: now,
+        }),
+        dbInstance
+          .update(leads)
+          .set({ contactId: newContactId, status: "converted", updatedAt: now })
+          .where(and(eq(leads.organizationId, organizationId), eq(leads.id, leadId))),
+        dbInstance.insert(activities).values({
+          id: activityId,
+          organizationId,
+          leadId,
+          type: "note",
+          title: "Lead converted to contact",
+          description: convDescription,
+          createdByUserId: actorUserId,
+          createdAt: now,
+          updatedAt: now,
+        }),
+      ]);
+    } else if ("transaction" in client && typeof client.transaction === "function") {
+      // PGlite (tests) or standard Postgres pool
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await client.transaction(async (tx: any) => {
+        await tx.insert(contacts).values({
+          id: newContactId,
+          organizationId,
+          firstName,
+          lastName,
+          email,
+          phone,
+          companyId: existingLead.companyId ?? null,
+          isPrimaryContact: false,
+          ownerUserId: existingLead.assignedToUserId ?? null,
+          notes: null,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await tx
+          .update(leads)
+          .set({ contactId: newContactId, status: "converted", updatedAt: now })
+          .where(and(eq(leads.organizationId, organizationId), eq(leads.id, leadId)));
+        await tx.insert(activities).values({
+          id: activityId,
+          organizationId,
+          leadId,
+          type: "note",
+          title: "Lead converted to contact",
+          description: convDescription,
+          createdByUserId: actorUserId,
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+    } else {
+      // Fallback: sequential writes (no atomic guarantee)
+      await dbInstance.insert(contacts).values({
+        id: newContactId,
+        organizationId,
+        firstName,
+        lastName,
+        email,
+        phone,
+        companyId: existingLead.companyId ?? null,
+        isPrimaryContact: false,
+        ownerUserId: existingLead.assignedToUserId ?? null,
+        notes: null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await dbInstance
+        .update(leads)
+        .set({ contactId: newContactId, status: "converted", updatedAt: now })
+        .where(and(eq(leads.organizationId, organizationId), eq(leads.id, leadId)));
+      await dbInstance.insert(activities).values({
+        id: activityId,
+        organizationId,
+        leadId,
+        type: "note",
+        title: "Lead converted to contact",
+        description: convDescription,
+        createdByUserId: actorUserId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    contactId = newContactId;
+  } else {
+    // mode === "link_existing"
+    if (!input.existingContactId || input.existingContactId.trim() === "") {
+      throw new ValidationError("An existing contact ID is required for link_existing mode.");
+    }
+
+    const existingContactId = input.existingContactId.trim();
+
+    // Verify the target contact belongs to this organization and is not archived
+    const [targetContact] = await dbInstance
+      .select({
+        id: contacts.id,
+        firstName: contacts.firstName,
+        lastName: contacts.lastName,
+        archivedAt: contacts.archivedAt,
+      })
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.id, existingContactId),
+          eq(contacts.organizationId, organizationId)
+        )
+      )
+      .limit(1);
+
+    if (!targetContact) {
+      throw new ValidationError("Selected contact not found in this organization.");
+    }
+
+    if (targetContact.archivedAt) {
+      throw new ValidationError("Cannot link to an archived contact.");
+    }
+
+    const now = new Date();
+    const contactName = `${targetContact.firstName}${targetContact.lastName ? ` ${targetContact.lastName}` : ""}`;
+    const activityId = crypto.randomUUID();
+    const convNotes = input.conversionNotes?.trim();
+    const convDescription = convNotes
+      ? `Linked to existing contact "${contactName}". Notes: ${convNotes}`
+      : `Lead was linked to existing contact "${contactName}".`;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client2 = dbInstance as any;
+    if ("batch" in client2 && typeof client2.batch === "function") {
+      // Neon HTTP — execute in one atomic batch request
+      await client2.batch([
+        dbInstance
+          .update(leads)
+          .set({ contactId: existingContactId, status: "converted", updatedAt: now })
+          .where(and(eq(leads.organizationId, organizationId), eq(leads.id, leadId))),
+        dbInstance.insert(activities).values({
+          id: activityId,
+          organizationId,
+          leadId,
+          type: "note",
+          title: "Lead linked to existing contact",
+          description: convDescription,
+          createdByUserId: actorUserId,
+          createdAt: now,
+          updatedAt: now,
+        }),
+      ]);
+    } else if ("transaction" in client2 && typeof client2.transaction === "function") {
+      // PGlite (tests) or standard Postgres pool
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await client2.transaction(async (tx: any) => {
+        await tx
+          .update(leads)
+          .set({ contactId: existingContactId, status: "converted", updatedAt: now })
+          .where(and(eq(leads.organizationId, organizationId), eq(leads.id, leadId)));
+        await tx.insert(activities).values({
+          id: activityId,
+          organizationId,
+          leadId,
+          type: "note",
+          title: "Lead linked to existing contact",
+          description: convDescription,
+          createdByUserId: actorUserId,
+          createdAt: now,
+          updatedAt: now,
+        });
+      });
+    } else {
+      // Fallback: sequential writes
+      await dbInstance
+        .update(leads)
+        .set({ contactId: existingContactId, status: "converted", updatedAt: now })
+        .where(and(eq(leads.organizationId, organizationId), eq(leads.id, leadId)));
+      await dbInstance.insert(activities).values({
+        id: activityId,
+        organizationId,
+        leadId,
+        type: "note",
+        title: "Lead linked to existing contact",
+        description: convDescription,
+        createdByUserId: actorUserId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    contactId = existingContactId;
+  }
+
+  const updatedLead = await getLeadById(organizationId, leadId, dbInstance);
+  return { lead: updatedLead, contactId };
 }
