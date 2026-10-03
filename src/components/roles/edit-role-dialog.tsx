@@ -63,6 +63,8 @@ function EditRoleFormContent({
       users: { id: "users", title: "Team & Member Access", items: [] },
       roles: { id: "roles", title: "Roles & Security Controls", items: [] },
       activities: { id: "activities", title: "Activities & Timeline", items: [] },
+      follow_ups: { id: "follow_ups", title: "Follow-ups & Next Actions", items: [] },
+      pipelines: { id: "pipelines", title: "Pipelines & Stages", items: [] },
       custom_fields: { id: "custom_fields", title: "Custom Fields", items: [] },
       leads: { id: "leads", title: "Leads & Prospects", items: [] },
     };

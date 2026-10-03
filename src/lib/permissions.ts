@@ -87,6 +87,38 @@ export const INITIAL_PERMISSIONS = [
     key: "activities.delete",
     description: "Archive or delete lead activities",
   },
+  {
+    key: "follow_ups.view",
+    description: "View lead follow-ups and next action details",
+  },
+  {
+    key: "follow_ups.create",
+    description: "Create new follow-ups and next actions for leads",
+  },
+  {
+    key: "follow_ups.update",
+    description: "Update, complete, or cancel follow-ups",
+  },
+  {
+    key: "follow_ups.delete",
+    description: "Archive or delete follow-ups",
+  },
+  {
+    key: "pipelines.view",
+    description: "View organization pipelines and stage configuration",
+  },
+  {
+    key: "pipelines.create",
+    description: "Create new pipelines and pipeline stages",
+  },
+  {
+    key: "pipelines.update",
+    description: "Update pipelines, edit stages, and reorder stages",
+  },
+  {
+    key: "pipelines.delete",
+    description: "Archive or delete pipelines and pipeline stages",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

@@ -4,4 +4,5 @@ export * from "./rbac";
 export * from "./custom-fields";
 export * from "./leads";
 export * from "./activities";
-
+export * from "./follow-ups";
+export * from "./pipelines";

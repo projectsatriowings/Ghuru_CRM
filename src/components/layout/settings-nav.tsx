@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Building2, Users, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Building2, Users, ShieldCheck, SlidersHorizontal, GitBranch } from "lucide-react";
 
 interface SettingsNavProps {
   permissions: string[];
@@ -38,6 +38,12 @@ export function SettingsNav({ permissions }: SettingsNavProps) {
       icon: SlidersHorizontal,
       permission: "custom_fields.view",
     },
+    {
+      title: "Pipelines",
+      href: "/settings/pipelines",
+      icon: GitBranch,
+      permission: "pipelines.view",
+    },
   ];
 
   return (
@@ -48,7 +54,7 @@ export function SettingsNav({ permissions }: SettingsNavProps) {
             return null;
           }
 
-          const isActive = pathname === tab.href;
+          const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
 
           return (
             <Link

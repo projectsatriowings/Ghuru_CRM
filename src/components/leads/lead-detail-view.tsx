@@ -8,9 +8,11 @@ import {
   LEAD_SOURCE_LABELS,
 } from "@/lib/types/leads";
 import { type ActivityWithRelations } from "@/lib/types/activities";
+import { type FollowUpWithRelations } from "@/lib/types/follow-ups";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { ArchiveLeadDialog } from "./archive-lead-dialog";
 import { ActivityTimeline } from "@/components/activities/activity-timeline";
+import { FollowUpSection } from "@/components/follow-ups/follow-up-section";
 import { CustomFieldValueDisplay } from "@/components/custom-fields/custom-field-renderer";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,23 +32,37 @@ import {
 interface LeadDetailViewProps {
   lead: LeadWithRelations;
   activities?: ActivityWithRelations[];
+  followUps?: FollowUpWithRelations[];
+  members?: Array<{ id: string; name: string; email: string }>;
+  currentUserId?: string;
   canUpdate: boolean;
   canDelete: boolean;
   canViewActivities?: boolean;
   canCreateActivity?: boolean;
   canUpdateActivity?: boolean;
   canDeleteActivity?: boolean;
+  canViewFollowUps?: boolean;
+  canCreateFollowUp?: boolean;
+  canUpdateFollowUp?: boolean;
+  canDeleteFollowUp?: boolean;
 }
 
 export function LeadDetailView({
   lead,
   activities = [],
+  followUps = [],
+  members = [],
+  currentUserId,
   canUpdate,
   canDelete,
   canViewActivities = true,
   canCreateActivity = true,
   canUpdateActivity = true,
   canDeleteActivity = true,
+  canViewFollowUps = true,
+  canCreateFollowUp = true,
+  canUpdateFollowUp = true,
+  canDeleteFollowUp = true,
 }: LeadDetailViewProps) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -127,10 +143,24 @@ export function LeadDetailView({
         </div>
       </div>
 
-      {/* Main Grid: Left Column (Details & Activity Timeline) & Right Column (Sidebar Summary) */}
+      {/* Main Grid: Left Column (Next Action, Activities, Details) & Right Column (Sidebar Summary) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 Cols wide on desktop) */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Next Action & Follow-up Section */}
+          {canViewFollowUps && (
+            <FollowUpSection
+              leadId={lead.id}
+              followUps={followUps}
+              canCreate={canCreateFollowUp}
+              canUpdate={canUpdateFollowUp}
+              canDelete={canDeleteFollowUp}
+              members={members}
+              currentUserId={currentUserId}
+              onRefresh={() => router.refresh()}
+            />
+          )}
+
           {/* Activity Timeline */}
           {canViewActivities && (
             <ActivityTimeline
