@@ -110,6 +110,8 @@ export interface Lead {
   source: LeadSource;
   status: LeadStatus;
   assignedToUserId: string | null;
+  pipelineId?: string | null;
+  stageId?: string | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -123,8 +125,21 @@ export interface LeadAssignedUser {
   image?: string | null;
 }
 
+export interface LeadPipelineSummary {
+  id: string;
+  name: string;
+}
+
+export interface LeadStageSummary {
+  id: string;
+  name: string;
+  displayOrder?: number;
+}
+
 export interface LeadWithRelations extends Lead {
   assignedToUser?: LeadAssignedUser | null;
+  pipeline?: LeadPipelineSummary | null;
+  stage?: LeadStageSummary | null;
   customFields?: Record<string, unknown>;
   customFieldValues?: Array<{
     field: CustomFieldDefinition;

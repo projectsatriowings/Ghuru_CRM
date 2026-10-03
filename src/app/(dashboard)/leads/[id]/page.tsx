@@ -4,6 +4,7 @@ import { getLeadById } from "@/lib/services/lead.service";
 import { getLeadActivities } from "@/lib/services/activity.service";
 import { getLeadFollowUps } from "@/lib/services/follow-up.service";
 import { getOrganizationMembers } from "@/lib/services/user.service";
+import { getActivePipelinesWithStages } from "@/lib/services/pipeline.service";
 import { LeadDetailView } from "@/components/leads/lead-detail-view";
 import { type ActivityWithRelations } from "@/lib/types/activities";
 import { type FollowUpWithRelations } from "@/lib/types/follow-ups";
@@ -34,7 +35,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const canViewActivities = ctx.hasPermission("activities.view");
   const canViewFollowUps = ctx.hasPermission("follow_ups.view");
 
-  const [activities, followUps, membersResult] = await Promise.all([
+  const [activities, followUps, membersResult, pipelines] = await Promise.all([
     canViewActivities
       ? getLeadActivities(ctx.organization.id, id)
       : Promise.resolve([] as ActivityWithRelations[]),
@@ -42,6 +43,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       ? getLeadFollowUps(ctx.organization.id, id)
       : Promise.resolve([] as FollowUpWithRelations[]),
     getOrganizationMembers(ctx.organization.id),
+    getActivePipelinesWithStages(ctx.organization.id),
   ]);
 
   const members = membersResult.map((m) => ({
@@ -53,6 +55,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   return (
     <LeadDetailView
       lead={lead}
+      pipelines={pipelines}
       activities={activities}
       followUps={followUps}
       members={members}

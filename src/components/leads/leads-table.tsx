@@ -11,6 +11,7 @@ import {
   LEAD_STATUSES,
   LEAD_STATUS_LABELS,
 } from "@/lib/types/leads";
+import { type PipelineWithStages } from "@/lib/types/pipelines";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { ArchiveLeadDialog } from "./archive-lead-dialog";
 import {
@@ -56,6 +57,7 @@ import {
 
 interface LeadsTableProps {
   leads: LeadWithRelations[];
+  pipelines?: PipelineWithStages[];
   pagination: LeadPagination;
   members: Array<{ id: string; name: string; email: string }>;
   canCreate: boolean;
@@ -83,6 +85,7 @@ function formatRelativeTime(dateInput: Date | string | number): string {
 
 export function LeadsTable({
   leads,
+  pipelines = [],
   pagination,
   members,
   canCreate,
@@ -99,11 +102,19 @@ export function LeadsTable({
   const currentStatus = searchParams.get("status") || "all";
   const currentSource = searchParams.get("source") || "all";
   const currentAssignedTo = searchParams.get("assignedTo") || "all";
+  const currentPipelineId = searchParams.get("pipelineId") || "all";
+  const currentStageId = searchParams.get("stageId") || "all";
   const currentArchived = searchParams.get("archived") || "false";
   const currentPage = Number(searchParams.get("page") || "1");
   const currentPageSize = Number(searchParams.get("pageSize") || "25");
 
   const [searchTerm, setSearchTerm] = useState(currentSearch);
+
+  // Selected pipeline for stage filter
+  const selectedFilterPipeline = pipelines.find((p) => p.id === currentPipelineId);
+  const availableFilterStages = selectedFilterPipeline?.stages
+    ? [...selectedFilterPipeline.stages].sort((a, b) => a.displayOrder - b.displayOrder)
+    : [];
 
   // Dialog State
   const [dialogLead, setDialogLead] = useState<LeadWithRelations | null>(null);
@@ -144,6 +155,8 @@ export function LeadsTable({
     currentStatus !== "all" ||
     currentSource !== "all" ||
     currentAssignedTo !== "all" ||
+    currentPipelineId !== "all" ||
+    currentStageId !== "all" ||
     currentArchived !== "false";
 
   const clearAllFilters = () => {
@@ -204,7 +217,7 @@ export function LeadsTable({
           </form>
 
           {/* Dropdown Filters */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             {/* Status Filter */}
             <Select
               value={currentStatus}
@@ -220,6 +233,69 @@ export function LeadsTable({
                 {LEAD_STATUSES.map((st) => (
                   <SelectItem key={st} value={st} className="text-xs">
                     {LEAD_STATUS_LABELS[st]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Pipeline Filter */}
+            <Select
+              value={currentPipelineId}
+              onValueChange={(val) => {
+                updateFilters({ pipelineId: val, stageId: null });
+              }}
+            >
+              <SelectTrigger className="h-9 text-xs bg-slate-50/50 border-slate-200">
+                <SelectValue placeholder="Pipeline" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">
+                  All Pipelines
+                </SelectItem>
+                <SelectItem value="unassigned" className="text-xs text-slate-500">
+                  Unassigned
+                </SelectItem>
+                {pipelines.map((p) => (
+                  <SelectItem key={p.id} value={p.id} className="text-xs">
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Stage Filter */}
+            <Select
+              value={currentStageId}
+              onValueChange={(val) => updateFilters({ stageId: val })}
+              disabled={
+                currentPipelineId === "all" ||
+                currentPipelineId === "unassigned" ||
+                availableFilterStages.length === 0
+              }
+            >
+              <SelectTrigger className="h-9 text-xs bg-slate-50/50 border-slate-200">
+                <SelectValue
+                  placeholder={
+                    currentPipelineId === "all"
+                      ? "Filter by pipeline first"
+                      : currentPipelineId === "unassigned"
+                      ? "No stages"
+                      : availableFilterStages.length === 0
+                      ? "No stages"
+                      : "Stage"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">
+                  All Stages
+                </SelectItem>
+                <SelectItem value="unassigned" className="text-xs text-slate-500">
+                  Unassigned
+                </SelectItem>
+                {availableFilterStages.map((st) => (
+                  <SelectItem key={st.id} value={st.id} className="text-xs">
+                    {st.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -354,22 +430,25 @@ export function LeadsTable({
               <Table>
                 <TableHeader className="bg-slate-50/70 border-b border-slate-100">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[30%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-5">
+                    <TableHead className="w-[26%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider pl-5">
                       Lead
                     </TableHead>
-                    <TableHead className="w-[15%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                      Source
-                    </TableHead>
-                    <TableHead className="w-[15%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    <TableHead className="w-[12%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                       Status
                     </TableHead>
-                    <TableHead className="w-[18%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    <TableHead className="w-[15%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Pipeline
+                    </TableHead>
+                    <TableHead className="w-[15%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Stage
+                    </TableHead>
+                    <TableHead className="w-[14%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                       Assigned To
                     </TableHead>
-                    <TableHead className="w-[12%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    <TableHead className="w-[10%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                       Updated
                     </TableHead>
-                    <TableHead className="w-[10%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider text-right pr-5">
+                    <TableHead className="w-[8%] py-3 text-[11px] font-bold text-slate-700 uppercase tracking-wider text-right pr-5">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -419,16 +498,35 @@ export function LeadsTable({
                           </Link>
                         </TableCell>
 
-                        {/* Source */}
-                        <TableCell className="py-3.5">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/80">
-                            {LEAD_SOURCE_LABELS[lead.source] || lead.source}
-                          </span>
-                        </TableCell>
-
                         {/* Status */}
                         <TableCell className="py-3.5">
                           <LeadStatusBadge status={lead.status} />
+                        </TableCell>
+
+                        {/* Pipeline */}
+                        <TableCell className="py-3.5">
+                          {lead.pipeline ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200/80">
+                              {lead.pipeline.name}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">
+                              Not assigned
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Stage */}
+                        <TableCell className="py-3.5">
+                          {lead.stage ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                              {lead.stage.name}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">
+                              Not assigned
+                            </span>
+                          )}
                         </TableCell>
 
                         {/* Assigned To */}
@@ -542,11 +640,22 @@ export function LeadsTable({
                         >
                           {fullName}
                         </Link>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
                           <LeadStatusBadge status={lead.status} />
-                          <span className="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                            {LEAD_SOURCE_LABELS[lead.source]}
-                          </span>
+                          {lead.pipeline ? (
+                            <span className="text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded font-medium border border-slate-200/60">
+                              {lead.pipeline.name}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">
+                              No pipeline
+                            </span>
+                          )}
+                          {lead.stage && (
+                            <span className="text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded font-semibold border border-indigo-100">
+                              {lead.stage.name}
+                            </span>
+                          )}
                         </div>
                       </div>
 

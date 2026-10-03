@@ -51,6 +51,8 @@ export const createLeadSchema = z.object({
   source: leadSourceSchema.default("other"),
   status: leadStatusSchema.default("new"),
   assignedToUserId: z.string().nullable().optional().or(z.literal("")),
+  pipelineId: z.string().nullable().optional().or(z.literal("")),
+  stageId: z.string().nullable().optional().or(z.literal("")),
   notes: z
     .string()
     .max(5000, "Notes must not exceed 5000 characters")
@@ -79,6 +81,8 @@ export const updateLeadSchema = z.object({
   source: leadSourceSchema.optional(),
   status: leadStatusSchema.optional(),
   assignedToUserId: z.string().nullable().optional().or(z.literal("")),
+  pipelineId: z.string().nullable().optional().or(z.literal("")),
+  stageId: z.string().nullable().optional().or(z.literal("")),
   notes: z
     .string()
     .max(5000, "Notes must not exceed 5000 characters")
@@ -93,6 +97,8 @@ export const leadQuerySchema = z.object({
   status: z.string().trim().optional(),
   source: z.string().trim().optional(),
   assignedTo: z.string().trim().optional(),
+  pipelineId: z.string().trim().optional(),
+  stageId: z.string().trim().optional(),
   archived: z.string().trim().optional().default("false"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),

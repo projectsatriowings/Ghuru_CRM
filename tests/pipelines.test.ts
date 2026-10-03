@@ -49,6 +49,7 @@ describe("Milestone 2.4A — Pipelines & Stages Foundation Test Suite", () => {
       "0003_furry_fixer.sql",
       "0004_glamorous_natasha_romanoff.sql",
       "0005_eminent_red_ghost.sql",
+      "0006_new_kinsey_walden.sql",
     ];
 
     for (const file of migrationFiles) {

@@ -2,6 +2,7 @@ import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { users } from "./users";
+import { pipelines, pipelineStages } from "./pipelines";
 
 export const leads = pgTable(
   "leads",
@@ -17,6 +18,12 @@ export const leads = pgTable(
     source: text("source").notNull().default("other"),
     status: text("status").notNull().default("new"),
     assignedToUserId: text("assigned_to_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    pipelineId: text("pipeline_id").references(() => pipelines.id, {
+      onDelete: "set null",
+    }),
+    stageId: text("stage_id").references(() => pipelineStages.id, {
       onDelete: "set null",
     }),
     notes: text("notes"),
@@ -36,6 +43,16 @@ export const leads = pgTable(
       table.organizationId,
       table.assignedToUserId
     ),
+    index("leads_org_pipeline_idx").on(
+      table.organizationId,
+      table.pipelineId
+    ),
+    index("leads_org_stage_idx").on(
+      table.organizationId,
+      table.stageId
+    ),
+    index("leads_pipeline_idx").on(table.pipelineId),
+    index("leads_stage_idx").on(table.stageId),
     index("leads_org_created_idx").on(table.organizationId, table.createdAt),
     index("leads_org_archived_idx").on(table.organizationId, table.archivedAt),
   ]
@@ -49,5 +66,13 @@ export const leadsRelations = relations(leads, ({ one }) => ({
   assignedToUser: one(users, {
     fields: [leads.assignedToUserId],
     references: [users.id],
+  }),
+  pipeline: one(pipelines, {
+    fields: [leads.pipelineId],
+    references: [pipelines.id],
+  }),
+  stage: one(pipelineStages, {
+    fields: [leads.stageId],
+    references: [pipelineStages.id],
   }),
 }));

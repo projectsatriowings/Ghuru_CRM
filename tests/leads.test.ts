@@ -29,11 +29,15 @@ describe("Milestone 2.2 — Lead Management Foundation Test Suite", () => {
     const client = new PGlite();
     testDb = drizzle(client, { schema });
 
-    // 2. Read and apply DDL migrations 0000, 0001, and 0002
+    // 2. Read and apply DDL migrations 0000 to 0006
     const migrationFiles = [
       "0000_moaning_vector.sql",
       "0001_flashy_king_bedlam.sql",
       "0002_lowly_shape.sql",
+      "0003_furry_fixer.sql",
+      "0004_glamorous_natasha_romanoff.sql",
+      "0005_eminent_red_ghost.sql",
+      "0006_new_kinsey_walden.sql",
     ];
 
     for (const file of migrationFiles) {

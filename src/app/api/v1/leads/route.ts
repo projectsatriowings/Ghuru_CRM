@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
       status: searchParams.get("status") || undefined,
       source: searchParams.get("source") || undefined,
       assignedTo: searchParams.get("assignedTo") || undefined,
+      pipelineId: searchParams.get("pipelineId") || undefined,
+      stageId: searchParams.get("stageId") || undefined,
       archived: searchParams.get("archived") || "false",
       page: searchParams.get("page") || 1,
       pageSize: searchParams.get("pageSize") || 25,

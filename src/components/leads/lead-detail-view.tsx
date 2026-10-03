@@ -7,10 +7,12 @@ import {
   type LeadWithRelations,
   LEAD_SOURCE_LABELS,
 } from "@/lib/types/leads";
+import { type PipelineWithStages } from "@/lib/types/pipelines";
 import { type ActivityWithRelations } from "@/lib/types/activities";
 import { type FollowUpWithRelations } from "@/lib/types/follow-ups";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { ArchiveLeadDialog } from "./archive-lead-dialog";
+import { LeadPipelineCard } from "./lead-pipeline-card";
 import { ActivityTimeline } from "@/components/activities/activity-timeline";
 import { FollowUpSection } from "@/components/follow-ups/follow-up-section";
 import { CustomFieldValueDisplay } from "@/components/custom-fields/custom-field-renderer";
@@ -31,6 +33,7 @@ import {
 
 interface LeadDetailViewProps {
   lead: LeadWithRelations;
+  pipelines?: PipelineWithStages[];
   activities?: ActivityWithRelations[];
   followUps?: FollowUpWithRelations[];
   members?: Array<{ id: string; name: string; email: string }>;
@@ -49,6 +52,7 @@ interface LeadDetailViewProps {
 
 export function LeadDetailView({
   lead,
+  pipelines = [],
   activities = [],
   followUps = [],
   members = [],
@@ -310,6 +314,13 @@ export function LeadDetailView({
 
         {/* Right Column (Sidebar Summary) */}
         <div className="space-y-6">
+          {/* Pipeline & Stage Section */}
+          <LeadPipelineCard
+            lead={lead}
+            pipelines={pipelines}
+            canUpdate={canUpdate}
+          />
+
           <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 space-y-5">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider pb-3 border-b border-slate-100">
               Lead Overview

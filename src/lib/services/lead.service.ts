@@ -3,6 +3,7 @@ import { DbClient } from "@/db/types";
 import { leads } from "@/db/schema/leads";
 import { users } from "@/db/schema/users";
 import { organizationMembers } from "@/db/schema/organizations";
+import { pipelines, pipelineStages } from "@/db/schema/pipelines";
 import {
   eq,
   and,
@@ -42,8 +43,76 @@ export interface PaginatedLeadsResult {
 }
 
 /**
+ * Validates that pipelineId and stageId belong to the organization, are active,
+ * and that stageId belongs to pipelineId.
+ */
+export async function validateLeadPipelineAndStage(
+  organizationId: string,
+  pipelineId: string | null | undefined,
+  stageId: string | null | undefined,
+  dbInstance: DbClient = db as DbClient
+): Promise<{ resolvedPipelineId: string | null; resolvedStageId: string | null }> {
+  const pId = pipelineId && pipelineId.trim() !== "" ? pipelineId.trim() : null;
+  const sId = stageId && stageId.trim() !== "" ? stageId.trim() : null;
+
+  if (sId && !pId) {
+    throw new ValidationError("Cannot assign stage without a pipeline.");
+  }
+
+  if (pId) {
+    // Verify pipeline belongs to this organization, is not archived, and is active
+    const [pipeline] = await dbInstance
+      .select({ id: pipelines.id })
+      .from(pipelines)
+      .where(
+        and(
+          eq(pipelines.id, pId),
+          eq(pipelines.organizationId, organizationId),
+          isNull(pipelines.archivedAt),
+          eq(pipelines.active, true)
+        )
+      )
+      .limit(1);
+
+    if (!pipeline) {
+      throw new ValidationError(
+        "Selected pipeline not found, inactive, or does not belong to this organization."
+      );
+    }
+
+    if (sId) {
+      // Verify stage belongs to this organization and pipeline, is not archived, and is active
+      const [stage] = await dbInstance
+        .select({ id: pipelineStages.id })
+        .from(pipelineStages)
+        .where(
+          and(
+            eq(pipelineStages.id, sId),
+            eq(pipelineStages.organizationId, organizationId),
+            eq(pipelineStages.pipelineId, pId),
+            isNull(pipelineStages.archivedAt),
+            eq(pipelineStages.active, true)
+          )
+        )
+        .limit(1);
+
+      if (!stage) {
+        throw new ValidationError(
+          "Selected stage not found, inactive, or does not belong to the selected pipeline."
+        );
+      }
+    }
+  }
+
+  return {
+    resolvedPipelineId: pId,
+    resolvedStageId: sId,
+  };
+}
+
+/**
  * Creates a new lead in the specified organization with atomic validation
- * of assignee and custom fields.
+ * of assignee, custom fields, pipeline, and stage.
  */
 export async function createLead(
   organizationId: string,
@@ -77,7 +146,16 @@ export async function createLead(
     }
   }
 
-  // 2. Fetch active custom field definitions for 'lead'
+  // 2. Validate pipeline and stage (if provided)
+  const { resolvedPipelineId, resolvedStageId } =
+    await validateLeadPipelineAndStage(
+      organizationId,
+      validated.pipelineId,
+      validated.stageId,
+      dbInstance
+    );
+
+  // 3. Fetch active custom field definitions for 'lead'
   const activeFields = await getCustomFields(
     organizationId,
     { entityType: "lead", active: true },
@@ -126,7 +204,7 @@ export async function createLead(
     }
   }
 
-  // 3. Insert Lead record
+  // 4. Insert Lead record
   const leadId = crypto.randomUUID();
 
   await dbInstance.insert(leads).values({
@@ -139,6 +217,8 @@ export async function createLead(
     source: validated.source,
     status: validated.status,
     assignedToUserId: assignedUserId,
+    pipelineId: resolvedPipelineId,
+    stageId: resolvedStageId,
     notes: validated.notes ? validated.notes.trim() : null,
   });
 
@@ -198,6 +278,24 @@ export async function getLeads(
     }
   }
 
+  // Pipeline filter
+  if (validated.pipelineId && validated.pipelineId !== "all") {
+    if (validated.pipelineId === "unassigned") {
+      conditions.push(isNull(leads.pipelineId));
+    } else {
+      conditions.push(eq(leads.pipelineId, validated.pipelineId));
+    }
+  }
+
+  // Stage filter
+  if (validated.stageId && validated.stageId !== "all") {
+    if (validated.stageId === "unassigned") {
+      conditions.push(isNull(leads.stageId));
+    } else {
+      conditions.push(eq(leads.stageId, validated.stageId));
+    }
+  }
+
   // Search filter (first name, last name, email, phone)
   if (validated.search && validated.search.trim() !== "") {
     const term = `%${validated.search.trim()}%`;
@@ -235,7 +333,7 @@ export async function getLeads(
   const orderClause =
     validated.sortDirection === "asc" ? asc(sortCol) : desc(sortCol);
 
-  // Data query with left join on users for assigned member details
+  // Data query with left join on users for assigned member details, pipelines, and stages
   const rows = await dbInstance
     .select({
       lead: leads,
@@ -245,9 +343,20 @@ export async function getLeads(
         email: users.email,
         image: users.image,
       },
+      pipeline: {
+        id: pipelines.id,
+        name: pipelines.name,
+      },
+      stage: {
+        id: pipelineStages.id,
+        name: pipelineStages.name,
+        displayOrder: pipelineStages.displayOrder,
+      },
     })
     .from(leads)
     .leftJoin(users, eq(leads.assignedToUserId, users.id))
+    .leftJoin(pipelines, eq(leads.pipelineId, pipelines.id))
+    .leftJoin(pipelineStages, eq(leads.stageId, pipelineStages.id))
     .where(and(...conditions))
     .orderBy(orderClause)
     .limit(validated.pageSize)
@@ -258,6 +367,8 @@ export async function getLeads(
     source: r.lead.source as LeadSource,
     status: r.lead.status as LeadStatus,
     assignedToUser: r.assignedUser?.id ? r.assignedUser : null,
+    pipeline: r.pipeline?.id ? r.pipeline : null,
+    stage: r.stage?.id ? r.stage : null,
   }));
 
   return {
@@ -288,9 +399,20 @@ export async function getLeadById(
         email: users.email,
         image: users.image,
       },
+      pipeline: {
+        id: pipelines.id,
+        name: pipelines.name,
+      },
+      stage: {
+        id: pipelineStages.id,
+        name: pipelineStages.name,
+        displayOrder: pipelineStages.displayOrder,
+      },
     })
     .from(leads)
     .leftJoin(users, eq(leads.assignedToUserId, users.id))
+    .leftJoin(pipelines, eq(leads.pipelineId, pipelines.id))
+    .leftJoin(pipelineStages, eq(leads.stageId, pipelineStages.id))
     .where(
       and(eq(leads.organizationId, organizationId), eq(leads.id, leadId))
     )
@@ -318,6 +440,8 @@ export async function getLeadById(
     source: row.lead.source as LeadSource,
     status: row.lead.status as LeadStatus,
     assignedToUser: row.assignedUser?.id ? row.assignedUser : null,
+    pipeline: row.pipeline?.id ? row.pipeline : null,
+    stage: row.stage?.id ? row.stage : null,
     customFields,
     customFieldValues: customFieldEntries,
   };
@@ -333,7 +457,7 @@ export async function updateLead(
   dbInstance: DbClient = db as DbClient
 ): Promise<LeadWithRelations> {
   // 1. Ensure lead exists in this organization
-  await getLeadById(organizationId, leadId, dbInstance);
+  const existingLead = await getLeadById(organizationId, leadId, dbInstance);
 
   const validated = updateLeadSchema.parse(input);
 
@@ -367,7 +491,40 @@ export async function updateLead(
     }
   }
 
-  // 3. Validate and update custom fields (if provided)
+  // 3. Verify pipeline and stage relationship (if changed)
+  let targetPipelineId: string | null | undefined = undefined;
+  let targetStageId: string | null | undefined = undefined;
+
+  const hasPipelineUpdate = validated.pipelineId !== undefined;
+  const hasStageUpdate = validated.stageId !== undefined;
+
+  if (hasPipelineUpdate || hasStageUpdate) {
+    const rawPipeline = hasPipelineUpdate
+      ? (validated.pipelineId && validated.pipelineId.trim() !== "" ? validated.pipelineId.trim() : null)
+      : existingLead.pipelineId;
+
+    let rawStage = hasStageUpdate
+      ? (validated.stageId && validated.stageId.trim() !== "" ? validated.stageId.trim() : null)
+      : existingLead.stageId;
+
+    // If pipeline is being explicitly removed/cleared, stage must also be cleared
+    if (hasPipelineUpdate && rawPipeline === null && !hasStageUpdate) {
+      rawStage = null;
+    }
+
+    const { resolvedPipelineId, resolvedStageId } =
+      await validateLeadPipelineAndStage(
+        organizationId,
+        rawPipeline,
+        rawStage,
+        dbInstance
+      );
+
+    targetPipelineId = resolvedPipelineId;
+    targetStageId = resolvedStageId;
+  }
+
+  // 4. Validate and update custom fields (if provided)
   if (validated.customFields) {
     const activeFields = await getCustomFields(
       organizationId,
@@ -397,7 +554,7 @@ export async function updateLead(
     }
   }
 
-  // 4. Update lead standard fields
+  // 5. Update lead standard fields
   await dbInstance
     .update(leads)
     .set({
@@ -417,6 +574,12 @@ export async function updateLead(
       ...(validated.status !== undefined ? { status: validated.status } : {}),
       ...(assignedUserId !== undefined
         ? { assignedToUserId: assignedUserId }
+        : {}),
+      ...(targetPipelineId !== undefined
+        ? { pipelineId: targetPipelineId }
+        : {}),
+      ...(targetStageId !== undefined
+        ? { stageId: targetStageId }
         : {}),
       ...(validated.notes !== undefined
         ? { notes: validated.notes ? validated.notes.trim() : null }

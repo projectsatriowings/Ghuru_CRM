@@ -1,6 +1,7 @@
 import { requirePermission } from "@/lib/context/organization-context";
 import { getLeads } from "@/lib/services/lead.service";
 import { getOrganizationMembers } from "@/lib/services/user.service";
+import { getActivePipelinesWithStages } from "@/lib/services/pipeline.service";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { leadQuerySchema } from "@/lib/validations/lead";
 
@@ -15,6 +16,8 @@ interface LeadsPageProps {
     status?: string;
     source?: string;
     assignedTo?: string;
+    pipelineId?: string;
+    stageId?: string;
     archived?: string;
     page?: string;
     pageSize?: string;
@@ -32,6 +35,8 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
     status: rawParams.status || undefined,
     source: rawParams.source || undefined,
     assignedTo: rawParams.assignedTo || undefined,
+    pipelineId: rawParams.pipelineId || undefined,
+    stageId: rawParams.stageId || undefined,
     archived: rawParams.archived || "false",
     page: rawParams.page ? Number(rawParams.page) : 1,
     pageSize: rawParams.pageSize ? Number(rawParams.pageSize) : 25,
@@ -39,9 +44,10 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
     sortDirection: rawParams.sortDirection || "desc",
   });
 
-  const [leadsResult, membersResult] = await Promise.all([
+  const [leadsResult, membersResult, pipelines] = await Promise.all([
     getLeads(ctx.organization.id, parsedQuery),
     getOrganizationMembers(ctx.organization.id),
+    getActivePipelinesWithStages(ctx.organization.id),
   ]);
 
   const members = membersResult.map((m) => ({
@@ -54,6 +60,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
     <div className="space-y-6">
       <LeadsTable
         leads={leadsResult.data}
+        pipelines={pipelines}
         pagination={leadsResult.pagination}
         members={members}
         canCreate={ctx.hasPermission("leads.create")}

@@ -43,6 +43,13 @@
       "when": 1791010571369,
       "tag": "0005_eminent_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791013297997,
+      "tag": "0006_new_kinsey_walden",
+      "breakpoints": true
     }
   ]
 }

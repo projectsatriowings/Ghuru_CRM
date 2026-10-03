@@ -8,6 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { organizations } from "./organizations";
+import { leads } from "./leads";
 
 export const pipelines = pgTable(
   "pipelines",
@@ -89,9 +90,10 @@ export const pipelinesRelations = relations(pipelines, ({ one, many }) => ({
     references: [organizations.id],
   }),
   stages: many(pipelineStages),
+  leads: many(leads),
 }));
 
-export const pipelineStagesRelations = relations(pipelineStages, ({ one }) => ({
+export const pipelineStagesRelations = relations(pipelineStages, ({ one, many }) => ({
   pipeline: one(pipelines, {
     fields: [pipelineStages.pipelineId],
     references: [pipelines.id],
@@ -100,4 +102,5 @@ export const pipelineStagesRelations = relations(pipelineStages, ({ one }) => ({
     fields: [pipelineStages.organizationId],
     references: [organizations.id],
   }),
+  leads: many(leads),
 }));

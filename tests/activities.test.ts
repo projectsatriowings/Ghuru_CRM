@@ -39,6 +39,9 @@ describe("Milestone 2.3A — Lead Activities Foundation Test Suite", () => {
       "0001_flashy_king_bedlam.sql",
       "0002_lowly_shape.sql",
       "0003_furry_fixer.sql",
+      "0004_glamorous_natasha_romanoff.sql",
+      "0005_eminent_red_ghost.sql",
+      "0006_new_kinsey_walden.sql",
     ];
 
     for (const file of migrationFiles) {

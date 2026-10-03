@@ -583,3 +583,53 @@ export async function moveStage(
     dbInstance
   );
 }
+
+/**
+ * Retrieves all active pipelines and their active stages for an organization.
+ * Used for dropdown selections in Lead create/edit and filters.
+ */
+export async function getActivePipelinesWithStages(
+  organizationId: string,
+  dbInstance: DbClient = db as DbClient
+): Promise<PipelineWithStages[]> {
+  const activePipelines = await dbInstance
+    .select()
+    .from(pipelines)
+    .where(
+      and(
+        eq(pipelines.organizationId, organizationId),
+        eq(pipelines.active, true),
+        isNull(pipelines.archivedAt)
+      )
+    )
+    .orderBy(asc(pipelines.displayOrder), asc(pipelines.createdAt));
+
+  if (activePipelines.length === 0) {
+    return [];
+  }
+
+  const activeStages = await dbInstance
+    .select()
+    .from(pipelineStages)
+    .where(
+      and(
+        eq(pipelineStages.organizationId, organizationId),
+        eq(pipelineStages.active, true),
+        isNull(pipelineStages.archivedAt)
+      )
+    )
+    .orderBy(asc(pipelineStages.displayOrder), asc(pipelineStages.createdAt));
+
+  const stagesByPipeline = new Map<string, PipelineStage[]>();
+  for (const stage of activeStages) {
+    if (!stagesByPipeline.has(stage.pipelineId)) {
+      stagesByPipeline.set(stage.pipelineId, []);
+    }
+    stagesByPipeline.get(stage.pipelineId)!.push(stage);
+  }
+
+  return activePipelines.map((p) => ({
+    ...p,
+    stages: stagesByPipeline.get(p.id) || [],
+  }));
+}

@@ -16,6 +16,7 @@ import {
   LEAD_STATUSES,
   LEAD_STATUS_LABELS,
 } from "@/lib/types/leads";
+import { type PipelineWithStages } from "@/lib/types/pipelines";
 import { type CustomFieldDefinition } from "@/lib/types/custom-fields";
 import { CustomFieldRenderer } from "@/components/custom-fields/custom-field-renderer";
 import { Button } from "@/components/ui/button";
@@ -35,12 +36,14 @@ import {
   SlidersHorizontal,
   FileText,
   Briefcase,
+  GitBranch,
   ArrowLeft,
 } from "lucide-react";
 
 interface LeadFormProps {
   mode: "create" | "edit";
   initialData?: LeadWithRelations | null;
+  pipelines?: PipelineWithStages[];
   customFieldDefinitions: CustomFieldDefinition[];
   members: Array<{ id: string; name: string; email: string }>;
 }
@@ -48,6 +51,7 @@ interface LeadFormProps {
 export function LeadForm({
   mode,
   initialData,
+  pipelines = [],
   customFieldDefinitions,
   members,
 }: LeadFormProps) {
@@ -68,6 +72,33 @@ export function LeadForm({
     initialData?.assignedToUserId || "unassigned"
   );
   const [notes, setNotes] = useState(initialData?.notes || "");
+
+  // Pipeline & Stage Fields
+  const [pipelineId, setPipelineId] = useState<string>(
+    initialData?.pipelineId || "none"
+  );
+  const [stageId, setStageId] = useState<string>(
+    initialData?.stageId || "none"
+  );
+
+  const selectedPipeline = pipelines.find((p) => p.id === pipelineId);
+  const availableStages = selectedPipeline?.stages
+    ? [...selectedPipeline.stages].sort((a, b) => a.displayOrder - b.displayOrder)
+    : [];
+
+  const handlePipelineChange = (newPipelineId: string | null) => {
+    const val = newPipelineId || "none";
+    setPipelineId(val);
+    if (val === "none") {
+      setStageId("none");
+    } else {
+      const selected = pipelines.find((p) => p.id === val);
+      const isStageValid = selected?.stages?.some((s) => s.id === stageId);
+      if (!isStageValid) {
+        setStageId("none");
+      }
+    }
+  };
 
   // Custom Fields Map (fieldKey -> value)
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(() => {
@@ -120,6 +151,11 @@ export function LeadForm({
       status,
       assignedToUserId:
         assignedToUserId === "unassigned" ? null : assignedToUserId,
+      pipelineId: pipelineId && pipelineId !== "none" ? pipelineId : null,
+      stageId:
+        pipelineId && pipelineId !== "none" && stageId && stageId !== "none"
+          ? stageId
+          : null,
       notes: notes.trim() || null,
       customFields,
     };
@@ -373,6 +409,85 @@ export function LeadForm({
                 {members.map((m) => (
                   <SelectItem key={m.id} value={m.id} className="text-xs">
                     {m.name} ({m.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Section: Pipeline & Stage */}
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+            <GitBranch className="h-3.5 w-3.5" />
+          </div>
+          <div>
+            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              Pipeline & Stage
+            </h2>
+            <p className="text-[11px] text-slate-400">
+              Assign to a pipeline and track stage progression (optional)
+            </p>
+          </div>
+        </div>
+
+        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="pipeline" className="text-xs font-semibold text-slate-700">
+              Pipeline
+            </Label>
+            <Select
+              value={pipelineId}
+              onValueChange={handlePipelineChange}
+              disabled={loading}
+            >
+              <SelectTrigger id="pipeline" className="h-9 text-xs bg-white">
+                <SelectValue placeholder="Select pipeline (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="text-xs text-slate-500">
+                  None (No pipeline)
+                </SelectItem>
+                {pipelines.map((p) => (
+                  <SelectItem key={p.id} value={p.id} className="text-xs">
+                    {p.name} {p.isDefault ? "(Default)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="stage" className="text-xs font-semibold text-slate-700">
+              Stage
+            </Label>
+            <Select
+              value={stageId}
+              onValueChange={(val) => {
+                if (val) setStageId(val);
+              }}
+              disabled={loading || pipelineId === "none" || availableStages.length === 0}
+            >
+              <SelectTrigger id="stage" className="h-9 text-xs bg-white">
+                <SelectValue
+                  placeholder={
+                    pipelineId === "none"
+                      ? "Select a pipeline first"
+                      : availableStages.length === 0
+                      ? "No stages in this pipeline"
+                      : "Select stage (optional)"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none" className="text-xs text-slate-500">
+                  None (No stage)
+                </SelectItem>
+                {availableStages.map((st) => (
+                  <SelectItem key={st.id} value={st.id} className="text-xs">
+                    {st.name}
                   </SelectItem>
                 ))}
               </SelectContent>
