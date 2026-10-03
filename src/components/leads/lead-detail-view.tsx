@@ -7,8 +7,10 @@ import {
   type LeadWithRelations,
   LEAD_SOURCE_LABELS,
 } from "@/lib/types/leads";
+import { type ActivityWithRelations } from "@/lib/types/activities";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { ArchiveLeadDialog } from "./archive-lead-dialog";
+import { ActivityTimeline } from "@/components/activities/activity-timeline";
 import { CustomFieldValueDisplay } from "@/components/custom-fields/custom-field-renderer";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,14 +29,24 @@ import {
 
 interface LeadDetailViewProps {
   lead: LeadWithRelations;
+  activities?: ActivityWithRelations[];
   canUpdate: boolean;
   canDelete: boolean;
+  canViewActivities?: boolean;
+  canCreateActivity?: boolean;
+  canUpdateActivity?: boolean;
+  canDeleteActivity?: boolean;
 }
 
 export function LeadDetailView({
   lead,
+  activities = [],
   canUpdate,
   canDelete,
+  canViewActivities = true,
+  canCreateActivity = true,
+  canUpdateActivity = true,
+  canDeleteActivity = true,
 }: LeadDetailViewProps) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -115,10 +127,22 @@ export function LeadDetailView({
         </div>
       </div>
 
-      {/* Main Grid: Left Column (Details) & Right Column (Sidebar Summary) */}
+      {/* Main Grid: Left Column (Details & Activity Timeline) & Right Column (Sidebar Summary) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 Cols wide on desktop) */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Activity Timeline */}
+          {canViewActivities && (
+            <ActivityTimeline
+              leadId={lead.id}
+              activities={activities}
+              canCreate={canCreateActivity}
+              canUpdate={canUpdateActivity}
+              canDelete={canDeleteActivity}
+              onRefresh={() => router.refresh()}
+            />
+          )}
+
           {/* Contact Information */}
           <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
             <div className="px-5 py-3.5 bg-slate-50/50 border-b border-slate-100 flex items-center gap-2">

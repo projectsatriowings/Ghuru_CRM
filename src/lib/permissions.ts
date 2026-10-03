@@ -71,6 +71,22 @@ export const INITIAL_PERMISSIONS = [
     key: "leads.delete",
     description: "Archive or deactivate leads in the organization",
   },
+  {
+    key: "activities.view",
+    description: "View lead activity timeline and activity details",
+  },
+  {
+    key: "activities.create",
+    description: "Create new activities for leads",
+  },
+  {
+    key: "activities.update",
+    description: "Update lead activity details",
+  },
+  {
+    key: "activities.delete",
+    description: "Archive or delete lead activities",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

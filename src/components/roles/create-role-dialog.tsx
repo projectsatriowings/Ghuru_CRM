@@ -43,6 +43,9 @@ export function CreateRoleDialog({ systemPermissions }: CreateRoleDialogProps) {
       organization: { id: "organization", title: "Organization Management", items: [] },
       users: { id: "users", title: "Team & Member Access", items: [] },
       roles: { id: "roles", title: "Roles & Security Controls", items: [] },
+      activities: { id: "activities", title: "Activities & Timeline", items: [] },
+      custom_fields: { id: "custom_fields", title: "Custom Fields", items: [] },
+      leads: { id: "leads", title: "Leads & Prospects", items: [] },
     };
 
     const other: PermissionItem[] = [];
