@@ -8,6 +8,10 @@ export const INITIAL_PERMISSIONS = [
     description: "Update organization settings and details",
   },
   {
+    key: "dashboard.view",
+    description: "View CRM operational dashboard and intelligence",
+  },
+  {
     key: "users.view",
     description: "View organization members and their roles",
   },
