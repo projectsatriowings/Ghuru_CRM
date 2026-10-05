@@ -9,6 +9,7 @@ import {
 import { relations } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { leads } from "./leads";
+import { deals } from "./deals";
 
 export const pipelines = pgTable(
   "pipelines",
@@ -91,6 +92,7 @@ export const pipelinesRelations = relations(pipelines, ({ one, many }) => ({
   }),
   stages: many(pipelineStages),
   leads: many(leads),
+  deals: many(deals),
 }));
 
 export const pipelineStagesRelations = relations(pipelineStages, ({ one, many }) => ({
@@ -103,4 +105,5 @@ export const pipelineStagesRelations = relations(pipelineStages, ({ one, many })
     references: [organizations.id],
   }),
   leads: many(leads),
+  deals: many(deals),
 }));

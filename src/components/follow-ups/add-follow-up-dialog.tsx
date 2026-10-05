@@ -27,7 +27,8 @@ import {
 import { CalendarClock, Plus, Loader2, AlertCircle } from "lucide-react";
 
 interface AddFollowUpDialogProps {
-  leadId: string;
+  leadId?: string;
+  dealId?: string;
   currentUserId?: string;
   members: Array<{ id: string; name: string; email: string }>;
   trigger?: React.ReactNode;
@@ -36,6 +37,7 @@ interface AddFollowUpDialogProps {
 
 export function AddFollowUpDialog({
   leadId,
+  dealId,
   currentUserId,
   members,
   trigger,
@@ -58,6 +60,8 @@ export function AddFollowUpDialog({
     setError(null);
 
     const validation = createFollowUpSchema.safeParse({
+      leadId: leadId || undefined,
+      dealId: dealId || undefined,
       title,
       description: description.trim() || undefined,
       dueDate,
@@ -74,7 +78,8 @@ export function AddFollowUpDialog({
     setLoading(true);
 
     try {
-      const res = await createFollowUpAction(leadId, validation.data);
+      const targetId = dealId || leadId || "";
+      const res = await createFollowUpAction(targetId, validation.data);
 
       if (!res.success) {
         setError(res.error || "Failed to create follow-up.");

@@ -834,7 +834,7 @@ export async function getMyWorkMetrics(
     title: r.title,
     dueDate: r.dueDate,
     dueTime: r.dueTime,
-    leadId: r.leadId,
+    leadId: r.leadId!,
     leadName: `${r.leadFirstName} ${r.leadLastName || ""}`.trim(),
   }));
 
@@ -867,7 +867,7 @@ export async function getMyWorkMetrics(
     title: r.title,
     dueDate: r.dueDate,
     dueTime: r.dueTime,
-    leadId: r.leadId,
+    leadId: r.leadId!,
     leadName: `${r.leadFirstName} ${r.leadLastName || ""}`.trim(),
   }));
 
@@ -1002,11 +1002,11 @@ export async function getNeedsAttentionItems(
       title: `Overdue Follow-up: ${fu.title}`,
       description: `Due on ${fu.dueDate}${fu.dueTime ? ` at ${fu.dueTime}` : ""}`,
       entityType: "lead",
-      entityId: fu.leadId,
+      entityId: fu.leadId!,
       entityName: `${fu.leadFirstName} ${fu.leadLastName || ""}`.trim(),
       urgency: "high",
       timestamp: fu.dueDate,
-      link: `/leads/${fu.leadId}`,
+      link: `/leads/${fu.leadId!}`,
     });
   }
 

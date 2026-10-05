@@ -52,6 +52,8 @@ describe("Milestone 2.3B — Follow-ups & Next Action Test Suite", () => {
       "0009_talented_bastion.sql",
       "0010_amused_gambit.sql",
       "0011_chubby_pete_wisdom.sql",
+      "0012_amused_sheva_callister.sql",
+      "0013_regular_silk_fever.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -363,6 +365,7 @@ describe("Milestone 2.3B — Follow-ups & Next Action Test Suite", () => {
           id: "fu-completed",
           organizationId: orgAId,
           leadId: leadAId,
+          dealId: null,
           assignedToUserId: null,
           title: "Past completed follow-up",
           description: null,
@@ -379,6 +382,7 @@ describe("Milestone 2.3B — Follow-ups & Next Action Test Suite", () => {
           id: "fu-pending-later",
           organizationId: orgAId,
           leadId: leadAId,
+          dealId: null,
           assignedToUserId: null,
           title: "Later pending action",
           description: null,
@@ -395,6 +399,7 @@ describe("Milestone 2.3B — Follow-ups & Next Action Test Suite", () => {
           id: "fu-pending-earliest",
           organizationId: orgAId,
           leadId: leadAId,
+          dealId: null,
           assignedToUserId: null,
           title: "Earliest pending action",
           description: null,

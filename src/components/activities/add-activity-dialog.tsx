@@ -135,6 +135,8 @@ export function AddActivityDialog({
       ? "Lead"
       : targetEntityType === "contact"
       ? "Contact"
+      : targetEntityType === "deal"
+      ? "Deal"
       : "Company";
 
   return (

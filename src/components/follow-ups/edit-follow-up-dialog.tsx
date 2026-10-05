@@ -31,7 +31,8 @@ interface EditFollowUpDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   followUp: FollowUpWithRelations | null;
-  leadId: string;
+  leadId?: string;
+  dealId?: string;
   members: Array<{ id: string; name: string; email: string }>;
   onSuccess?: () => void;
 }
@@ -39,12 +40,14 @@ interface EditFollowUpDialogProps {
 function EditFollowUpFormContent({
   followUp,
   leadId,
+  dealId,
   members,
   onClose,
   onSuccess,
 }: {
   followUp: FollowUpWithRelations;
-  leadId: string;
+  leadId?: string;
+  dealId?: string;
   members: Array<{ id: string; name: string; email: string }>;
   onClose: () => void;
   onSuccess?: () => void;
@@ -82,9 +85,10 @@ function EditFollowUpFormContent({
     setLoading(true);
 
     try {
+      const targetId = dealId || leadId || "";
       const res = await updateFollowUpAction(
         followUp.id,
-        leadId,
+        targetId,
         validation.data
       );
 
@@ -273,6 +277,7 @@ export function EditFollowUpDialog({
   onOpenChange,
   followUp,
   leadId,
+  dealId,
   members,
   onSuccess,
 }: EditFollowUpDialogProps) {
@@ -295,6 +300,7 @@ export function EditFollowUpDialog({
           key={followUp.id}
           followUp={followUp}
           leadId={leadId}
+          dealId={dealId}
           members={members}
           onClose={() => onOpenChange(false)}
           onSuccess={onSuccess}

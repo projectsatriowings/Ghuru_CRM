@@ -10,6 +10,7 @@ import {
 import { leads } from "@/db/schema/leads";
 import { contacts } from "@/db/schema/contacts";
 import { companies } from "@/db/schema/companies";
+import { deals } from "@/db/schema/deals";
 import { users } from "@/db/schema/users";
 import { organizationMembers } from "@/db/schema/organizations";
 import { eq, and, isNull, desc, count, gte, lte } from "drizzle-orm";
@@ -94,6 +95,22 @@ export async function validateEntityForActivity(
     }
     if (record.archivedAt) {
       throw new ValidationError("Cannot create activity for an archived company.");
+    }
+    return record;
+  }
+
+  if (entityType === "deal") {
+    const [record] = await dbInstance
+      .select({ id: deals.id, archivedAt: deals.archivedAt })
+      .from(deals)
+      .where(and(eq(deals.id, cleanEntityId), eq(deals.organizationId, organizationId)))
+      .limit(1);
+
+    if (!record) {
+      throw new NotFoundError("Deal not found in this organization.");
+    }
+    if (record.archivedAt) {
+      throw new ValidationError("Cannot create activity for an archived deal.");
     }
     return record;
   }
@@ -509,6 +526,37 @@ export async function getLeadActivities(
     organizationId,
     "lead",
     leadId,
+    { includeArchived: options?.includeArchived, pageSize: 1000 },
+    activeDb
+  );
+  return result.data;
+}
+
+/**
+ * Backwards compatible helper: retrieves all activities for a deal (newest first).
+ */
+export async function getDealActivities(
+  organizationId: string,
+  dealId: string,
+  optionsOrDb?: { includeArchived?: boolean } | DbClient,
+  dbInstance?: DbClient
+): Promise<ActivityWithRelations[]> {
+  let options: { includeArchived?: boolean } | undefined;
+  let activeDb: DbClient = db as DbClient;
+
+  if (optionsOrDb && typeof (optionsOrDb as unknown as Record<string, unknown>).select === "function") {
+    activeDb = optionsOrDb as DbClient;
+  } else {
+    options = optionsOrDb as { includeArchived?: boolean } | undefined;
+    if (dbInstance) {
+      activeDb = dbInstance;
+    }
+  }
+
+  const result = await getActivitiesForEntity(
+    organizationId,
+    "deal",
+    dealId,
     { includeArchived: options?.includeArchived, pageSize: 1000 },
     activeDb
   );

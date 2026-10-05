@@ -40,6 +40,7 @@ import {
 } from "@/lib/services/custom-field.service";
 import { validateCustomFieldValue } from "@/lib/validations/custom-field";
 import { NotFoundError, ValidationError } from "@/lib/errors";
+import { emitAutomationEvent } from "@/lib/automation/automation-engine";
 
 /**
  * Creates a new Company for an organization.
@@ -152,7 +153,29 @@ export async function createCompany(
     );
   }
 
-  return getCompanyById(organizationId, companyId, dbInstance);
+  const createdCompany = await getCompanyById(
+    organizationId,
+    companyId,
+    dbInstance
+  );
+
+  try {
+    await emitAutomationEvent(
+      {
+        organizationId,
+        entityType: "company",
+        entityId: companyId,
+        eventType: "entity_created",
+        payload: { current: createdCompany },
+      },
+      undefined,
+      dbInstance
+    );
+  } catch (err) {
+    console.error("[CompanyService] Error emitting entity_created event:", err);
+  }
+
+  return createdCompany;
 }
 
 /**
@@ -376,7 +399,11 @@ export async function updateCompany(
   dbInstance: DbClient = db as DbClient
 ): Promise<CompanyWithRelations> {
   // 1. Ensure company exists in this organization
-  await getCompanyById(organizationId, companyId, dbInstance);
+  const existingCompany = await getCompanyById(
+    organizationId,
+    companyId,
+    dbInstance
+  );
 
   const validated = updateCompanySchema.parse(input);
 
@@ -470,7 +497,52 @@ export async function updateCompany(
       )
     );
 
-  return getCompanyById(organizationId, companyId, dbInstance);
+  const updatedCompany = await getCompanyById(
+    organizationId,
+    companyId,
+    dbInstance
+  );
+
+  try {
+    if (existingCompany.ownerUserId !== updatedCompany.ownerUserId) {
+      await emitAutomationEvent(
+        {
+          organizationId,
+          entityType: "company",
+          entityId: companyId,
+          eventType: "entity_assigned",
+          payload: {
+            previous: existingCompany,
+            current: updatedCompany,
+          },
+        },
+        undefined,
+        dbInstance
+      );
+    }
+
+    await emitAutomationEvent(
+      {
+        organizationId,
+        entityType: "company",
+        entityId: companyId,
+        eventType: "entity_updated",
+        payload: {
+          previous: existingCompany,
+          current: updatedCompany,
+        },
+      },
+      undefined,
+      dbInstance
+    );
+  } catch (err) {
+    console.error(
+      "[CompanyService] Error emitting automation events for company update:",
+      err
+    );
+  }
+
+  return updatedCompany;
 }
 
 /**

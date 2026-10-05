@@ -8,3 +8,5 @@ export * from "./follow-ups";
 export * from "./pipelines";
 export * from "./contacts";
 export * from "./companies";
+export * from "./deals";
+export * from "./automations";

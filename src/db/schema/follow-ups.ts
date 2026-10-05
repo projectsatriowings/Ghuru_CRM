@@ -2,6 +2,7 @@ import { pgTable, text, timestamp, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { leads } from "./leads";
+import { deals } from "./deals";
 import { users } from "./users";
 
 export const FOLLOW_UP_STATUSES = ["pending", "completed", "cancelled"] as const;
@@ -14,9 +15,12 @@ export const followUps = pgTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
-    leadId: text("lead_id")
-      .notNull()
-      .references(() => leads.id, { onDelete: "cascade" }),
+    leadId: text("lead_id").references(() => leads.id, {
+      onDelete: "cascade",
+    }),
+    dealId: text("deal_id").references(() => deals.id, {
+      onDelete: "cascade",
+    }),
     assignedToUserId: text("assigned_to_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -41,6 +45,8 @@ export const followUps = pgTable(
     index("follow_ups_org_idx").on(table.organizationId),
     index("follow_ups_lead_idx").on(table.leadId),
     index("follow_ups_org_lead_idx").on(table.organizationId, table.leadId),
+    index("follow_ups_deal_idx").on(table.dealId),
+    index("follow_ups_org_deal_idx").on(table.organizationId, table.dealId),
     index("follow_ups_status_idx").on(table.status),
     index("follow_ups_due_date_idx").on(table.dueDate),
     index("follow_ups_org_status_due_idx").on(
@@ -65,6 +71,10 @@ export const followUpsRelations = relations(followUps, ({ one }) => ({
   lead: one(leads, {
     fields: [followUps.leadId],
     references: [leads.id],
+  }),
+  deal: one(deals, {
+    fields: [followUps.dealId],
+    references: [deals.id],
   }),
   assignedToUser: one(users, {
     fields: [followUps.assignedToUserId],

@@ -8,7 +8,8 @@ import { FollowUpHistory } from "./follow-up-history";
 import { EditFollowUpDialog } from "./edit-follow-up-dialog";
 
 interface FollowUpSectionProps {
-  leadId: string;
+  leadId?: string;
+  dealId?: string;
   followUps: FollowUpWithRelations[];
   canCreate: boolean;
   canUpdate: boolean;
@@ -20,6 +21,7 @@ interface FollowUpSectionProps {
 
 export function FollowUpSection({
   leadId,
+  dealId,
   followUps,
   canCreate,
   canUpdate,
@@ -44,6 +46,7 @@ export function FollowUpSection({
       {/* 1. Primary Next Action Card */}
       <NextActionCard
         leadId={leadId}
+        dealId={dealId}
         primaryAction={primaryAction}
         canCreate={canCreate}
         canUpdate={canUpdate}
@@ -56,6 +59,7 @@ export function FollowUpSection({
       {/* 2. Follow-up History */}
       <FollowUpHistory
         leadId={leadId}
+        dealId={dealId}
         historyList={historyList}
         canUpdate={canUpdate}
         canDelete={canDelete}
@@ -71,6 +75,7 @@ export function FollowUpSection({
         }}
         followUp={editingFollowUp}
         leadId={leadId}
+        dealId={dealId}
         members={members}
         onSuccess={onRefresh}
       />

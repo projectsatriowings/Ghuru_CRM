@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { DbClient } from "@/db/types";
 import { followUps, type FollowUpStatus } from "@/db/schema/follow-ups";
 import { leads } from "@/db/schema/leads";
+import { deals } from "@/db/schema/deals";
 import { users } from "@/db/schema/users";
 import { organizationMembers } from "@/db/schema/organizations";
 import { eq, and, isNull, asc } from "drizzle-orm";
@@ -30,15 +31,67 @@ export async function createFollowUp(
 ): Promise<FollowUpWithRelations> {
   const validated = createFollowUpSchema.parse(input);
 
-  // 1. Verify lead belongs to this organization (tenant isolation)
-  const [leadRecord] = await dbInstance
-    .select({ id: leads.id })
-    .from(leads)
-    .where(and(eq(leads.id, leadId), eq(leads.organizationId, organizationId)))
-    .limit(1);
+  let resolvedLeadId: string | null = null;
+  let resolvedDealId: string | null = null;
 
-  if (!leadRecord) {
-    throw new NotFoundError("Lead not found in this organization.");
+  if (validated.dealId) {
+    const [dealRecord] = await dbInstance
+      .select({ id: deals.id, archivedAt: deals.archivedAt })
+      .from(deals)
+      .where(and(eq(deals.id, validated.dealId), eq(deals.organizationId, organizationId)))
+      .limit(1);
+
+    if (!dealRecord) {
+      throw new NotFoundError("Deal not found in this organization.");
+    }
+    if (dealRecord.archivedAt) {
+      throw new ValidationError("Cannot create follow-up for an archived deal.");
+    }
+    resolvedDealId = validated.dealId;
+  } else if (validated.leadId) {
+    const [leadRecord] = await dbInstance
+      .select({ id: leads.id, archivedAt: leads.archivedAt })
+      .from(leads)
+      .where(and(eq(leads.id, validated.leadId), eq(leads.organizationId, organizationId)))
+      .limit(1);
+
+    if (!leadRecord) {
+      throw new NotFoundError("Lead not found in this organization.");
+    }
+    if (leadRecord.archivedAt) {
+      throw new ValidationError("Cannot create follow-up for an archived lead.");
+    }
+    resolvedLeadId = validated.leadId;
+  } else {
+    // Check if leadOrDealId is a lead first
+    const [leadRecord] = await dbInstance
+      .select({ id: leads.id, archivedAt: leads.archivedAt })
+      .from(leads)
+      .where(and(eq(leads.id, leadId), eq(leads.organizationId, organizationId)))
+      .limit(1);
+
+    if (leadRecord) {
+      if (leadRecord.archivedAt) {
+        throw new ValidationError("Cannot create follow-up for an archived lead.");
+      }
+      resolvedLeadId = leadId;
+    } else {
+      // Check if it's a deal
+      const [dealRecord] = await dbInstance
+        .select({ id: deals.id, archivedAt: deals.archivedAt })
+        .from(deals)
+        .where(and(eq(deals.id, leadId), eq(deals.organizationId, organizationId)))
+        .limit(1);
+
+      if (dealRecord) {
+        if (dealRecord.archivedAt) {
+          throw new ValidationError("Cannot create follow-up for an archived deal.");
+        }
+        resolvedDealId = leadId;
+      } else {
+        throw new NotFoundError("Lead not found in this organization.");
+      }
+    }
   }
 
   // 2. Validate assignee (if provided, must be in this organization; default to current user)
@@ -74,7 +127,8 @@ export async function createFollowUp(
   await dbInstance.insert(followUps).values({
     id: followUpId,
     organizationId,
-    leadId,
+    leadId: resolvedLeadId,
+    dealId: resolvedDealId,
     assignedToUserId: assigneeId,
     title: validated.title,
     description: validated.description ? validated.description.trim() : null,
@@ -118,6 +172,86 @@ export async function getLeadFollowUps(
   }
 
   const rows = await dbInstance
+    .select({
+      followUp: followUps,
+      assignedUser: {
+        id: assignedUser.id,
+        name: assignedUser.name,
+        email: assignedUser.email,
+        image: assignedUser.image,
+      },
+      createdByUser: {
+        id: createdUser.id,
+        name: createdUser.name,
+        email: createdUser.email,
+        image: createdUser.image,
+      },
+    })
+    .from(followUps)
+    .leftJoin(assignedUser, eq(followUps.assignedToUserId, assignedUser.id))
+    .leftJoin(createdUser, eq(followUps.createdByUserId, createdUser.id))
+    .where(and(...conditions))
+    .orderBy(
+      asc(followUps.dueDate),
+      asc(followUps.dueTime),
+      asc(followUps.createdAt)
+    );
+
+  return rows.map((r) => ({
+    ...r.followUp,
+    status: r.followUp.status as FollowUpStatus,
+    assignedToUser: r.assignedUser?.id ? r.assignedUser : null,
+    createdByUser: r.createdByUser || {
+      id: r.followUp.createdByUserId,
+      name: "Unknown User",
+      email: "",
+      image: null,
+    },
+  }));
+}
+
+/**
+ * Retrieves all active (non-archived) follow-ups for a deal, sorted by due date and time.
+ */
+export async function getDealFollowUps(
+  organizationId: string,
+  dealId: string,
+  optionsOrDb?: { includeArchived?: boolean } | DbClient,
+  dbInstance?: DbClient
+): Promise<FollowUpWithRelations[]> {
+  let options: { includeArchived?: boolean } | undefined;
+  let activeDb: DbClient = db as DbClient;
+
+  if (optionsOrDb && typeof (optionsOrDb as unknown as Record<string, unknown>).select === "function") {
+    activeDb = optionsOrDb as DbClient;
+  } else {
+    options = optionsOrDb as { includeArchived?: boolean } | undefined;
+    if (dbInstance) {
+      activeDb = dbInstance;
+    }
+  }
+
+  // 1. Verify deal belongs to this organization (tenant isolation)
+  const [dealRecord] = await activeDb
+    .select({ id: deals.id })
+    .from(deals)
+    .where(and(eq(deals.id, dealId), eq(deals.organizationId, organizationId)))
+    .limit(1);
+
+  if (!dealRecord) {
+    throw new NotFoundError("Deal not found in this organization.");
+  }
+
+  const conditions = [
+    eq(followUps.organizationId, organizationId),
+    eq(followUps.dealId, dealId),
+  ];
+
+  if (!options?.includeArchived) {
+    conditions.push(isNull(followUps.archivedAt));
+  }
+
+  const rows = await activeDb
     .select({
       followUp: followUps,
       assignedUser: {

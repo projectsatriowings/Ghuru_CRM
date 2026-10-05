@@ -19,7 +19,7 @@ export const ACTIVITY_TYPES = [
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
-export const CRM_ENTITY_TYPES = ["lead", "contact", "company"] as const;
+export const CRM_ENTITY_TYPES = ["lead", "contact", "company", "deal"] as const;
 export type CrmEntityType = (typeof CRM_ENTITY_TYPES)[number];
 
 export const ACTIVITY_STATUSES = ["pending", "completed", "cancelled"] as const;

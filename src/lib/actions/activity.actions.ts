@@ -26,6 +26,9 @@ function revalidateEntityPath(entityType: string, entityId: string) {
   } else if (entityType === "company") {
     revalidatePath(`/companies/${entityId}`);
     revalidatePath("/companies");
+  } else if (entityType === "deal") {
+    revalidatePath(`/deals/${entityId}`);
+    revalidatePath("/deals");
   }
 }
 

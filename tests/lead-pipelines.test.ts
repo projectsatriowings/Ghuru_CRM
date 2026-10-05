@@ -67,6 +67,8 @@ describe("Milestone 2.4B — Lead Pipeline & Stage Assignment Test Suite", () =>
       "0009_talented_bastion.sql",
       "0010_amused_gambit.sql",
       "0011_chubby_pete_wisdom.sql",
+      "0012_amused_sheva_callister.sql",
+      "0013_regular_silk_fever.sql",
     ];
 
     for (const file of migrationFiles) {

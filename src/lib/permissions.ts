@@ -155,6 +155,38 @@ export const INITIAL_PERMISSIONS = [
     key: "companies.delete",
     description: "Archive or deactivate companies in the organization",
   },
+  {
+    key: "deals.view",
+    description: "View organization deals and opportunity details",
+  },
+  {
+    key: "deals.create",
+    description: "Create new deals in the organization",
+  },
+  {
+    key: "deals.update",
+    description: "Update deal details, stage, status, and assignment",
+  },
+  {
+    key: "deals.delete",
+    description: "Archive or deactivate deals in the organization",
+  },
+  {
+    key: "automations.view",
+    description: "View organization automations and execution logs",
+  },
+  {
+    key: "automations.create",
+    description: "Create new automations in the organization",
+  },
+  {
+    key: "automations.update",
+    description: "Update automations, activate/deactivate, and configure rules",
+  },
+  {
+    key: "automations.delete",
+    description: "Archive or delete automations in the organization",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

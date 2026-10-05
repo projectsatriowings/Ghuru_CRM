@@ -4,6 +4,7 @@ import { organizations } from "./organizations";
 import { users } from "./users";
 import { contacts } from "./contacts";
 import { leads } from "./leads";
+import { deals } from "./deals";
 
 export const companies = pgTable(
   "companies",
@@ -51,4 +52,5 @@ export const companiesRelations = relations(companies, ({ one, many }) => ({
   }),
   contacts: many(contacts),
   leads: many(leads),
+  deals: many(deals),
 }));

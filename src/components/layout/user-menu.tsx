@@ -6,6 +6,7 @@ import { signOut } from "@/lib/auth/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -68,15 +69,17 @@ export function UserMenu({ user, roleName }: UserMenuProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 p-1.5 rounded-xl shadow-lg border-slate-200" align="end">
-        <DropdownMenuLabel className="font-normal px-2.5 py-2">
-          <div className="flex flex-col space-y-0.5">
-            <p className="text-xs font-bold text-slate-900">{user.name}</p>
-            <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
-            <span className="inline-block mt-1 text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md w-fit">
-              {roleName}
-            </span>
-          </div>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal px-2.5 py-2">
+            <div className="flex flex-col space-y-0.5">
+              <p className="text-xs font-bold text-slate-900">{user.name}</p>
+              <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+              <span className="inline-block mt-1 text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md w-fit">
+                {roleName}
+              </span>
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator className="bg-slate-100" />
         <DropdownMenuItem asChild>
           <Link

@@ -21,7 +21,8 @@ import {
 } from "@/lib/actions/follow-up.actions";
 
 interface NextActionCardProps {
-  leadId: string;
+  leadId?: string;
+  dealId?: string;
   primaryAction: FollowUpWithRelations | null;
   canCreate: boolean;
   canUpdate: boolean;
@@ -33,6 +34,7 @@ interface NextActionCardProps {
 
 export function NextActionCard({
   leadId,
+  dealId,
   primaryAction,
   canCreate,
   canUpdate,
@@ -43,12 +45,13 @@ export function NextActionCard({
 }: NextActionCardProps) {
   const [completing, setCompleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const targetId = dealId || leadId || "";
 
   async function handleComplete() {
     if (!primaryAction || completing) return;
     setCompleting(true);
     try {
-      await completeFollowUpAction(primaryAction.id, leadId);
+      await completeFollowUpAction(primaryAction.id, targetId);
       if (onRefresh) onRefresh();
     } finally {
       setCompleting(false);
@@ -59,7 +62,7 @@ export function NextActionCard({
     if (!primaryAction || cancelling) return;
     setCancelling(true);
     try {
-      await cancelFollowUpAction(primaryAction.id, leadId);
+      await cancelFollowUpAction(primaryAction.id, targetId);
       if (onRefresh) onRefresh();
     } finally {
       setCancelling(false);
@@ -240,6 +243,7 @@ export function NextActionCard({
               <div className="pt-1">
                 <AddFollowUpDialog
                   leadId={leadId}
+                  dealId={dealId}
                   currentUserId={currentUserId}
                   members={members}
                   onSuccess={onRefresh}

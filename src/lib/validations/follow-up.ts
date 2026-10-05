@@ -4,6 +4,8 @@ import { FOLLOW_UP_STATUSES } from "@/db/schema/follow-ups";
 export const followUpStatusSchema = z.enum(FOLLOW_UP_STATUSES);
 
 export const createFollowUpSchema = z.object({
+  leadId: z.string().trim().optional().nullable(),
+  dealId: z.string().trim().optional().nullable(),
   title: z
     .string()
     .trim()

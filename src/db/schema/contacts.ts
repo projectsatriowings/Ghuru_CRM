@@ -10,6 +10,7 @@ import { relations, sql } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { users } from "./users";
 import { companies } from "./companies";
+import { deals } from "./deals";
 
 export const contacts = pgTable(
   "contacts",
@@ -53,7 +54,7 @@ export const contacts = pgTable(
   ]
 );
 
-export const contactsRelations = relations(contacts, ({ one }) => ({
+export const contactsRelations = relations(contacts, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [contacts.organizationId],
     references: [organizations.id],
@@ -66,4 +67,5 @@ export const contactsRelations = relations(contacts, ({ one }) => ({
     fields: [contacts.companyId],
     references: [companies.id],
   }),
+  deals: many(deals),
 }));

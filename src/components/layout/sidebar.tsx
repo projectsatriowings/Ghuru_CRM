@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   UserPlus,
   Contact,
+  Briefcase,
+  Zap,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -48,6 +50,18 @@ export function Sidebar({ permissions }: SidebarProps) {
       href: "/companies",
       icon: Building,
       permission: "companies.view",
+    },
+    {
+      title: "Deals",
+      href: "/deals",
+      icon: Briefcase,
+      permission: "deals.view",
+    },
+    {
+      title: "Automations",
+      href: "/automations",
+      icon: Zap,
+      permission: "automations.view",
     },
   ];
 

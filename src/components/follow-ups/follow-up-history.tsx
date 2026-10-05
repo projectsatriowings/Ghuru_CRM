@@ -17,7 +17,8 @@ import {
 } from "@/lib/actions/follow-up.actions";
 
 interface FollowUpHistoryProps {
-  leadId: string;
+  leadId?: string;
+  dealId?: string;
   historyList: FollowUpWithRelations[];
   canUpdate: boolean;
   canDelete: boolean;
@@ -27,20 +28,23 @@ interface FollowUpHistoryProps {
 
 export function FollowUpHistory({
   leadId,
+  dealId,
   historyList,
   canUpdate,
   canDelete,
   onEdit,
   onRefresh,
 }: FollowUpHistoryProps) {
+  const targetId = dealId ?? leadId ?? "";
+
   async function handleComplete(id: string) {
-    await completeFollowUpAction(id, leadId);
+    await completeFollowUpAction(id, targetId);
     if (onRefresh) onRefresh();
   }
 
   async function handleArchive(id: string) {
     if (confirm("Are you sure you want to archive this follow-up record?")) {
-      await archiveFollowUpAction(id, leadId);
+      await archiveFollowUpAction(id, targetId);
       if (onRefresh) onRefresh();
     }
   }

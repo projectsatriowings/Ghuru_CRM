@@ -1,10 +1,11 @@
-export const ENTITY_TYPES = ["lead", "contact", "company"] as const;
+export const ENTITY_TYPES = ["lead", "contact", "company", "deal"] as const;
 export type EntityType = (typeof ENTITY_TYPES)[number];
 
 export const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   lead: "Lead",
   contact: "Contact",
   company: "Company",
+  deal: "Deal",
 };
 
 export const FIELD_TYPES = [

@@ -10,7 +10,8 @@ export interface FollowUpUser {
 export interface FollowUpWithRelations {
   id: string;
   organizationId: string;
-  leadId: string;
+  leadId?: string | null;
+  dealId?: string | null;
   assignedToUserId: string | null;
   title: string;
   description: string | null;

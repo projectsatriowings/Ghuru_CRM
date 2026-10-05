@@ -40,6 +40,7 @@ import {
 } from "@/lib/services/custom-field.service";
 import { validateCustomFieldValue } from "@/lib/validations/custom-field";
 import { NotFoundError, ValidationError } from "@/lib/errors";
+import { emitAutomationEvent } from "@/lib/automation/automation-engine";
 
 export interface PaginatedLeadsResult {
   data: LeadWithRelations[];
@@ -250,7 +251,25 @@ export async function createLead(
     );
   }
 
-  return getLeadById(organizationId, leadId, dbInstance);
+  const createdLead = await getLeadById(organizationId, leadId, dbInstance);
+
+  try {
+    await emitAutomationEvent(
+      {
+        organizationId,
+        entityType: "lead",
+        entityId: leadId,
+        eventType: "entity_created",
+        payload: { current: createdLead },
+      },
+      undefined,
+      dbInstance
+    );
+  } catch (err) {
+    console.error("[LeadService] Error emitting entity_created event:", err);
+  }
+
+  return createdLead;
 }
 
 /**
@@ -649,7 +668,89 @@ export async function updateLead(
       and(eq(leads.organizationId, organizationId), eq(leads.id, leadId))
     );
 
-  return getLeadById(organizationId, leadId, dbInstance);
+  const updatedLead = await getLeadById(organizationId, leadId, dbInstance);
+
+  try {
+    // 1. Status change
+    if (existingLead.status !== updatedLead.status) {
+      await emitAutomationEvent(
+        {
+          organizationId,
+          entityType: "lead",
+          entityId: leadId,
+          eventType: "entity_status_changed",
+          payload: {
+            previous: existingLead,
+            current: updatedLead,
+          },
+        },
+        undefined,
+        dbInstance
+      );
+    }
+
+    // 2. Stage change
+    if (
+      existingLead.stageId !== updatedLead.stageId ||
+      existingLead.pipelineId !== updatedLead.pipelineId
+    ) {
+      await emitAutomationEvent(
+        {
+          organizationId,
+          entityType: "lead",
+          entityId: leadId,
+          eventType: "pipeline_stage_changed",
+          payload: {
+            previous: existingLead,
+            current: updatedLead,
+          },
+        },
+        undefined,
+        dbInstance
+      );
+    }
+
+    // 3. Assignment change
+    if (existingLead.assignedToUserId !== updatedLead.assignedToUserId) {
+      await emitAutomationEvent(
+        {
+          organizationId,
+          entityType: "lead",
+          entityId: leadId,
+          eventType: "entity_assigned",
+          payload: {
+            previous: existingLead,
+            current: updatedLead,
+          },
+        },
+        undefined,
+        dbInstance
+      );
+    }
+
+    // 4. General update
+    await emitAutomationEvent(
+      {
+        organizationId,
+        entityType: "lead",
+        entityId: leadId,
+        eventType: "entity_updated",
+        payload: {
+          previous: existingLead,
+          current: updatedLead,
+        },
+      },
+      undefined,
+      dbInstance
+    );
+  } catch (err) {
+    console.error(
+      "[LeadService] Error emitting automation events for lead update:",
+      err
+    );
+  }
+
+  return updatedLead;
 }
 
 /**

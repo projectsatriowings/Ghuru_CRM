@@ -16,7 +16,7 @@ import { revalidatePath } from "next/cache";
 import { AppError } from "@/lib/errors";
 
 export async function createFollowUpAction(
-  leadId: string,
+  targetId: string,
   input: CreateFollowUpInput
 ) {
   try {
@@ -24,10 +24,11 @@ export async function createFollowUpAction(
     const followUp = await createFollowUp(
       ctx.organization.id,
       ctx.user.id,
-      leadId,
+      targetId,
       input
     );
-    revalidatePath(`/leads/${leadId}`);
+    revalidatePath(`/leads/${targetId}`);
+    revalidatePath(`/deals/${targetId}`);
     return { success: true as const, data: followUp };
   } catch (error) {
     if (error instanceof AppError) {
@@ -41,7 +42,7 @@ export async function createFollowUpAction(
 
 export async function updateFollowUpAction(
   followUpId: string,
-  leadId: string,
+  targetId: string,
   input: UpdateFollowUpInput
 ) {
   try {
@@ -51,7 +52,8 @@ export async function updateFollowUpAction(
       followUpId,
       input
     );
-    revalidatePath(`/leads/${leadId}`);
+    revalidatePath(`/leads/${targetId}`);
+    revalidatePath(`/deals/${targetId}`);
     return { success: true as const, data: followUp };
   } catch (error) {
     if (error instanceof AppError) {
@@ -65,12 +67,15 @@ export async function updateFollowUpAction(
 
 export async function completeFollowUpAction(
   followUpId: string,
-  leadId: string
+  targetId?: string
 ) {
   try {
     const ctx = await requirePermission("follow_ups.update");
     const followUp = await completeFollowUp(ctx.organization.id, followUpId);
-    revalidatePath(`/leads/${leadId}`);
+    if (targetId) {
+      revalidatePath(`/leads/${targetId}`);
+      revalidatePath(`/deals/${targetId}`);
+    }
     return { success: true as const, data: followUp };
   } catch (error) {
     if (error instanceof AppError) {
@@ -84,12 +89,15 @@ export async function completeFollowUpAction(
 
 export async function cancelFollowUpAction(
   followUpId: string,
-  leadId: string
+  targetId?: string
 ) {
   try {
     const ctx = await requirePermission("follow_ups.update");
     const followUp = await cancelFollowUp(ctx.organization.id, followUpId);
-    revalidatePath(`/leads/${leadId}`);
+    if (targetId) {
+      revalidatePath(`/leads/${targetId}`);
+      revalidatePath(`/deals/${targetId}`);
+    }
     return { success: true as const, data: followUp };
   } catch (error) {
     if (error instanceof AppError) {
@@ -103,12 +111,15 @@ export async function cancelFollowUpAction(
 
 export async function archiveFollowUpAction(
   followUpId: string,
-  leadId: string
+  targetId?: string
 ) {
   try {
     const ctx = await requirePermission("follow_ups.delete");
     const followUp = await archiveFollowUp(ctx.organization.id, followUpId);
-    revalidatePath(`/leads/${leadId}`);
+    if (targetId) {
+      revalidatePath(`/leads/${targetId}`);
+      revalidatePath(`/deals/${targetId}`);
+    }
     return { success: true as const, data: followUp };
   } catch (error) {
     if (error instanceof AppError) {

@@ -36,6 +36,7 @@ import {
 } from "@/lib/services/custom-field.service";
 import { validateCustomFieldValue } from "@/lib/validations/custom-field";
 import { NotFoundError, ValidationError } from "@/lib/errors";
+import { emitAutomationEvent } from "@/lib/automation/automation-engine";
 
 /**
  * Validates that a company belongs to the organization and is not archived.
@@ -210,7 +211,29 @@ export async function createContact(
     );
   }
 
-  return getContactById(organizationId, contactId, dbInstance);
+  const createdContact = await getContactById(
+    organizationId,
+    contactId,
+    dbInstance
+  );
+
+  try {
+    await emitAutomationEvent(
+      {
+        organizationId,
+        entityType: "contact",
+        entityId: contactId,
+        eventType: "entity_created",
+        payload: { current: createdContact },
+      },
+      undefined,
+      dbInstance
+    );
+  } catch (err) {
+    console.error("[ContactService] Error emitting entity_created event:", err);
+  }
+
+  return createdContact;
 }
 
 /**
@@ -541,7 +564,52 @@ export async function updateContact(
       )
     );
 
-  return getContactById(organizationId, contactId, dbInstance);
+  const updatedContact = await getContactById(
+    organizationId,
+    contactId,
+    dbInstance
+  );
+
+  try {
+    if (existingContact.ownerUserId !== updatedContact.ownerUserId) {
+      await emitAutomationEvent(
+        {
+          organizationId,
+          entityType: "contact",
+          entityId: contactId,
+          eventType: "entity_assigned",
+          payload: {
+            previous: existingContact,
+            current: updatedContact,
+          },
+        },
+        undefined,
+        dbInstance
+      );
+    }
+
+    await emitAutomationEvent(
+      {
+        organizationId,
+        entityType: "contact",
+        entityId: contactId,
+        eventType: "entity_updated",
+        payload: {
+          previous: existingContact,
+          current: updatedContact,
+        },
+      },
+      undefined,
+      dbInstance
+    );
+  } catch (err) {
+    console.error(
+      "[ContactService] Error emitting automation events for contact update:",
+      err
+    );
+  }
+
+  return updatedContact;
 }
 
 /**

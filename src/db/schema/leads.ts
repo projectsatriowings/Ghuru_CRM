@@ -5,6 +5,7 @@ import { users } from "./users";
 import { pipelines, pipelineStages } from "./pipelines";
 import { companies } from "./companies";
 import { contacts } from "./contacts";
+import { deals } from "./deals";
 
 export const leads = pgTable(
   "leads",
@@ -70,7 +71,7 @@ export const leads = pgTable(
   ]
 );
 
-export const leadsRelations = relations(leads, ({ one }) => ({
+export const leadsRelations = relations(leads, ({ one, many }) => ({
   organization: one(organizations, {
     fields: [leads.organizationId],
     references: [organizations.id],
@@ -95,4 +96,5 @@ export const leadsRelations = relations(leads, ({ one }) => ({
     fields: [leads.contactId],
     references: [contacts.id],
   }),
+  deals: many(deals),
 }));
