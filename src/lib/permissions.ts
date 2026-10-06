@@ -207,6 +207,10 @@ export const INITIAL_PERMISSIONS = [
     key: "teams.delete",
     description: "Archive or delete teams in the organization",
   },
+  {
+    key: "ai.view",
+    description: "View AI intelligence briefing, recommendations, metric explanations, and CRM Q&A",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

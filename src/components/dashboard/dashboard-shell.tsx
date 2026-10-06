@@ -18,6 +18,11 @@ import { UnassignedWorkWidget } from "./unassigned-work-widget";
 import { OwnerWorkloadWidget } from "./owner-workload-widget";
 import { OwnerComparisonTable } from "./owner-comparison-table";
 import { TeamIntelligenceWidget } from "./team-intelligence-widget";
+import { AIBriefingWidget } from "./ai-briefing-widget";
+import { AINextActionsWidget } from "./ai-next-actions-widget";
+import { AIAssistantPanel } from "./ai-assistant-panel";
+import { AIExplanationDialog } from "./ai-explanation-dialog";
+import { type AIBriefingResult } from "@/lib/types/ai";
 import {
   type DashboardData,
   type DashboardDateRangePreset,
@@ -29,6 +34,7 @@ interface DashboardShellProps {
   pipelines: Array<{ id: string; name: string }>;
   currentUserId: string;
   roleName: string;
+  canViewAI?: boolean;
 }
 
 export function DashboardShell({
@@ -37,12 +43,18 @@ export function DashboardShell({
   pipelines,
   currentUserId,
   roleName,
+  canViewAI = true,
 }: DashboardShellProps) {
   const [data, setData] = useState<DashboardData>(initialData);
   const [isPending, startTransition] = useTransition();
   const [preset, setPreset] = useState<DashboardDateRangePreset>(
     initialData.dateRange.preset || "last_30_days"
   );
+  const [explainingMetric, setExplainingMetric] = useState<{
+    key: string;
+    label: string;
+  } | null>(null);
+  const [briefingData, setBriefingData] = useState<AIBriefingResult | null>(null);
   const [customFrom, setCustomFrom] = useState<string | undefined>(undefined);
   const [customTo, setCustomTo] = useState<string | undefined>(undefined);
   const [assigneeId, setAssigneeId] = useState<string | undefined>(undefined);
@@ -110,6 +122,46 @@ export function DashboardShell({
         isLoading={isPending}
       />
 
+      {/* AI Metric Explainer Prompt Bar */}
+      {canViewAI && (
+        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-indigo-50/50 border border-indigo-100 text-xs text-indigo-900">
+          <div className="flex items-center gap-1.5 font-medium">
+            <span className="px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-semibold">AI</span>
+            <span>Operational Metric Context:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setExplainingMetric({ key: "conversion_rate", label: "Lead Conversion Rate" })}
+              className="px-2.5 py-1 rounded bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors text-[11px] font-medium cursor-pointer"
+            >
+              Explain Conversion Rate
+            </button>
+            <button
+              type="button"
+              onClick={() => setExplainingMetric({ key: "win_rate", label: "Pipeline Win Rate" })}
+              className="px-2.5 py-1 rounded bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors text-[11px] font-medium cursor-pointer"
+            >
+              Explain Win Rate
+            </button>
+            <button
+              type="button"
+              onClick={() => setExplainingMetric({ key: "pipeline_bottlenecks", label: "Pipeline Bottlenecks" })}
+              className="px-2.5 py-1 rounded bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors text-[11px] font-medium cursor-pointer"
+            >
+              Explain Bottlenecks
+            </button>
+            <button
+              type="button"
+              onClick={() => setExplainingMetric({ key: "overdue_follow_ups", label: "Overdue Follow-ups" })}
+              className="px-2.5 py-1 rounded bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors text-[11px] font-medium cursor-pointer"
+            >
+              Explain Overdue Tasks
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Level Metric Cards (Volume, Conversions, Deals, Win Rate) */}
       <MetricCardsWidget
         leads={data.leads}
@@ -118,6 +170,32 @@ export function DashboardShell({
         conversion={data.conversion}
         intelligence={data.intelligence}
       />
+
+      {/* Milestone 2.10D: AI Intelligence Layer (Daily Briefing, Next Actions, Q&A Assistant) */}
+      {canViewAI && (
+        <div className="space-y-6">
+          <AIBriefingWidget
+            preset={preset}
+            from={customFrom}
+            to={customTo}
+            assigneeId={assigneeId}
+            pipelineId={pipelineId}
+            onBriefingLoaded={setBriefingData}
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AINextActionsWidget
+              initialActions={briefingData?.recommendedActions}
+              preset={preset}
+              from={customFrom}
+              to={customTo}
+              assigneeId={assigneeId}
+              pipelineId={pipelineId}
+            />
+            <AIAssistantPanel />
+          </div>
+        </div>
+      )}
 
       {/* Needs Attention (2.10A) and My Work */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -176,6 +254,17 @@ export function DashboardShell({
       <div className="pt-2 text-right text-[11px] text-slate-400">
         Workspace view active · Role: {roleName}
       </div>
+
+      {/* Metric Explanation Dialog */}
+      <AIExplanationDialog
+        metricKey={explainingMetric?.key || null}
+        metricLabel={explainingMetric?.label || ""}
+        open={Boolean(explainingMetric)}
+        onOpenChange={(open) => {
+          if (!open) setExplainingMetric(null);
+        }}
+      />
     </div>
   );
 }
+
