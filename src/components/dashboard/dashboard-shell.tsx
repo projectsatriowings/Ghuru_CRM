@@ -6,11 +6,14 @@ import { MetricCardsWidget } from "./metric-cards-widget";
 import { MyWorkWidget } from "./my-work-widget";
 import { NeedsAttentionWidget } from "./needs-attention-widget";
 import { LeadStatusWidget } from "./lead-status-widget";
-import { LeadSourceWidget } from "./lead-source-widget";
-import { PipelineWidget } from "./pipeline-widget";
 import { FollowUpWidget } from "./follow-up-widget";
 import { ActivityWidget } from "./activity-widget";
 import { ConversionWidget } from "./conversion-widget";
+import { LeadFunnelWidget } from "./lead-funnel-widget";
+import { SourcePerformanceWidget } from "./source-performance-widget";
+import { PipelineHealthWidget } from "./pipeline-health-widget";
+import { PipelineBottleneckWidget } from "./pipeline-bottleneck-widget";
+import { PeriodComparisonWidget } from "./period-comparison-widget";
 import {
   type DashboardData,
   type DashboardDateRangePreset,
@@ -87,10 +90,6 @@ export function DashboardShell({
     fetchUpdatedData(newFilters);
   };
 
-  const isAdmin =
-    roleName.toLowerCase().includes("admin") ||
-    roleName.toLowerCase().includes("manager");
-
   return (
     <div className="space-y-6">
       {/* Reusable Filters Bar */}
@@ -107,41 +106,39 @@ export function DashboardShell({
         isLoading={isPending}
       />
 
-      {/* Top Level Metric Cards */}
+      {/* Top Level Metric Cards (Volume, Conversions, Deals, Win Rate) */}
       <MetricCardsWidget
         leads={data.leads}
         followUps={data.followUps}
         activities={data.activities}
         conversion={data.conversion}
+        intelligence={data.intelligence}
       />
 
-      {/* Role-Aware Grid Ordering:
-          For Counsellor/Staff: Operational work (My Work & Needs Attention) is placed first.
-          For Admin: Full strategic overview */}
-      {isAdmin ? (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LeadStatusWidget metrics={data.leads} />
-            <LeadSourceWidget sources={data.sources} />
-          </div>
-          <PipelineWidget pipelines={data.pipelines} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <NeedsAttentionWidget items={data.needsAttention} />
-            <MyWorkWidget myWork={data.myWork} />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <NeedsAttentionWidget items={data.needsAttention} />
-            <MyWorkWidget myWork={data.myWork} />
-          </div>
-          <PipelineWidget pipelines={data.pipelines} />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LeadStatusWidget metrics={data.leads} />
-            <LeadSourceWidget sources={data.sources} />
-          </div>
-        </>
+      {/* Needs Attention (2.10A) and My Work */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <NeedsAttentionWidget items={data.needsAttention} />
+        <MyWorkWidget myWork={data.myWork} />
+      </div>
+
+      {/* Milestone 2.10B: Lead Funnel Intelligence */}
+      <LeadFunnelWidget funnel={data.intelligence?.funnel} />
+
+      {/* Milestone 2.10B: Lead Source Performance & Lead Status Funnel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SourcePerformanceWidget sources={data.intelligence?.sources} />
+        <LeadStatusWidget metrics={data.leads} />
+      </div>
+
+      {/* Milestone 2.10B: Deal Pipeline Health & Intelligence */}
+      <PipelineHealthWidget pipelines={data.intelligence?.pipelines} />
+
+      {/* Milestone 2.10B: Pipeline Bottlenecks */}
+      <PipelineBottleneckWidget bottlenecks={data.intelligence?.bottlenecks} />
+
+      {/* Milestone 2.10B: Period-over-Period Performance Trend */}
+      {data.intelligence?.periodComparison && (
+        <PeriodComparisonWidget comparison={data.intelligence.periodComparison} />
       )}
 
       {/* Detailed Operational Breakdown: Follow-ups, Activities, Conversion */}
@@ -149,6 +146,11 @@ export function DashboardShell({
         <FollowUpWidget followUps={data.followUps} />
         <ActivityWidget activities={data.activities} />
         <ConversionWidget conversion={data.conversion} />
+      </div>
+
+      {/* Role and Data Context */}
+      <div className="pt-2 text-right text-[11px] text-slate-400">
+        Workspace view active · Role: {roleName}
       </div>
     </div>
   );

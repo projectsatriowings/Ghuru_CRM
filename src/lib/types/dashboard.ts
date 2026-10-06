@@ -22,6 +22,15 @@ export interface DashboardFilters {
   pipelineId?: string; // "all" | specific pipelineId
 }
 
+export interface DashboardQueryOptions {
+  dateRange?: DashboardDateRange;
+  preset?: DashboardDateRangePreset;
+  from?: Date | string;
+  to?: Date | string;
+  assigneeId?: string;
+  pipelineId?: string;
+}
+
 export interface LeadMetrics {
   total: number;
   totalAllTime: number;
@@ -168,6 +177,26 @@ export interface NeedsAttentionItem {
   currency?: string | null;
 }
 
+import {
+  type PipelineAndConversionIntelligence,
+  type LeadFunnelMetrics,
+  type SourcePerformanceItem,
+  type PipelineIntelligenceItem,
+  type PipelineBottleneckItem,
+  type PeriodComparisonData,
+  type CurrencyAmountMap,
+} from "./pipeline-intelligence";
+
+export type {
+  PipelineAndConversionIntelligence,
+  LeadFunnelMetrics,
+  SourcePerformanceItem,
+  PipelineIntelligenceItem,
+  PipelineBottleneckItem,
+  PeriodComparisonData,
+  CurrencyAmountMap,
+};
+
 export interface DashboardData {
   dateRange: {
     from: string;
@@ -182,6 +211,7 @@ export interface DashboardData {
   conversion: ConversionMetrics;
   myWork: MyWorkMetrics;
   needsAttention: NeedsAttentionItem[];
+  intelligence?: PipelineAndConversionIntelligence;
 }
 
 export type DashboardWidgetKey =
@@ -194,7 +224,12 @@ export type DashboardWidgetKey =
   | "conversion"
   | "conversion_metrics"
   | "my_work"
-  | "needs_attention";
+  | "needs_attention"
+  | "funnel_intelligence"
+  | "source_performance"
+  | "pipeline_intelligence"
+  | "pipeline_bottlenecks"
+  | "period_comparison";
 
 export interface DashboardWidgetConfig {
   key: DashboardWidgetKey;

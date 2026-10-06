@@ -14,6 +14,7 @@ import {
 import {
   type DashboardData,
   type DashboardFilters,
+  type DashboardQueryOptions,
   type DashboardDateRange,
   type DashboardDateRangePreset,
   type LeadMetrics,
@@ -36,16 +37,26 @@ import {
 import { resolveDateRange } from "@/lib/utils/date-range-utils";
 import { NotFoundError } from "@/lib/errors";
 import { getOrganizationAttentionItems } from "@/lib/services/crm-health.service";
+import {
+  getPipelineAndConversionIntelligence,
+  getLeadFunnelIntelligence,
+  getLeadSourcePerformance,
+  getDealPipelineIntelligence,
+  getPipelineBottlenecks,
+  getPeriodComparisonMetrics,
+} from "@/lib/services/pipeline-intelligence.service";
 import { eq, and, isNull, inArray, gte, lte, lt, desc, asc, sql } from "drizzle-orm";
 
-export interface DashboardQueryOptions {
-  dateRange?: DashboardDateRange;
-  preset?: DashboardDateRangePreset;
-  from?: Date | string;
-  to?: Date | string;
-  assigneeId?: string;
-  pipelineId?: string;
-}
+export {
+  getPipelineAndConversionIntelligence,
+  getLeadFunnelIntelligence,
+  getLeadSourcePerformance,
+  getDealPipelineIntelligence,
+  getPipelineBottlenecks,
+  getPeriodComparisonMetrics,
+};
+
+export type { DashboardQueryOptions };
 
 export function isDbClient(val: unknown): val is DbClient {
   return (
@@ -1050,6 +1061,7 @@ export async function getDashboardData(
     conversionMetrics,
     myWorkMetrics,
     needsAttentionItems,
+    pipelineIntelligence,
   ] = await Promise.all([
     getLeadMetrics(organizationId, { dateRange, assigneeId: resolvedAssigneeId, pipelineId: resolvedPipelineId }, dbInstance),
     getLeadSourceMetrics(organizationId, { dateRange, assigneeId: resolvedAssigneeId, pipelineId: resolvedPipelineId }, dbInstance),
@@ -1059,6 +1071,7 @@ export async function getDashboardData(
     getConversionMetrics(organizationId, { dateRange, assigneeId: resolvedAssigneeId, pipelineId: resolvedPipelineId }, dbInstance),
     getMyWorkMetrics(organizationId, currentUserId, { dateRange }, dbInstance),
     getNeedsAttentionItems(organizationId, { assigneeId: resolvedAssigneeId }, dbInstance),
+    getPipelineAndConversionIntelligence(organizationId, { dateRange, assigneeId: resolvedAssigneeId, pipelineId: resolvedPipelineId }, resolvedAssigneeId, resolvedPipelineId, dbInstance),
   ]);
 
   return {
@@ -1075,5 +1088,6 @@ export async function getDashboardData(
     conversion: conversionMetrics,
     myWork: myWorkMetrics,
     needsAttention: needsAttentionItems,
+    intelligence: pipelineIntelligence,
   };
 }

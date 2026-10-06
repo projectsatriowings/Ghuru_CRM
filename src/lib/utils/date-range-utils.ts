@@ -109,3 +109,25 @@ export const DATE_RANGE_PRESET_LABELS: Record<DashboardDateRangePreset, string> 
   last_month: "Last Month",
   custom: "Custom Range",
 };
+
+/**
+ * Returns the previous equivalent date range for period-over-period comparison.
+ * Deterministic and timezone-safe.
+ */
+export function getPreviousEquivalentDateRange(
+  currentRange: DashboardDateRange
+): DashboardDateRange {
+  const fromMs = currentRange.from.getTime();
+  const toMs = currentRange.to.getTime();
+  const durationMs = toMs - fromMs;
+
+  const prevTo = new Date(fromMs - 1);
+  const prevFrom = new Date(prevTo.getTime() - durationMs);
+
+  return {
+    from: prevFrom,
+    to: prevTo,
+    preset: currentRange.preset,
+  };
+}
+
