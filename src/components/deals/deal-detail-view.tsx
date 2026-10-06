@@ -7,8 +7,10 @@ import { type DealWithRelations, type DealStatus } from "@/lib/types/deals";
 import { type PipelineWithStages } from "@/lib/types/pipelines";
 import { type ActivityWithRelations } from "@/lib/types/activities";
 import { type FollowUpWithRelations } from "@/lib/types/follow-ups";
+import { type EntityHealthResult } from "@/lib/types/intelligence";
 import { DealStatusBadge } from "./deal-status-badge";
 import { ArchiveDealDialog } from "./archive-deal-dialog";
+import { EntityHealthCard } from "@/components/intelligence/entity-health-card";
 import { ActivityTimeline } from "@/components/activities/activity-timeline";
 import { FollowUpSection } from "@/components/follow-ups/follow-up-section";
 import { CustomFieldValueDisplay } from "@/components/custom-fields/custom-field-renderer";
@@ -45,6 +47,7 @@ import {
 
 interface DealDetailViewProps {
   deal: DealWithRelations;
+  health?: EntityHealthResult | null;
   pipelines?: PipelineWithStages[];
   activities?: ActivityWithRelations[];
   followUps?: FollowUpWithRelations[];
@@ -64,6 +67,7 @@ interface DealDetailViewProps {
 
 export function DealDetailView({
   deal,
+  health = null,
   pipelines = [],
   activities = [],
   followUps = [],
@@ -435,6 +439,10 @@ export function DealDetailView({
 
         {/* Right Column (Sidebar Summary) */}
         <div className="space-y-6">
+          {health && (
+            <EntityHealthCard health={health} />
+          )}
+
           {/* Pipeline & Stage Quick Card */}
           <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">

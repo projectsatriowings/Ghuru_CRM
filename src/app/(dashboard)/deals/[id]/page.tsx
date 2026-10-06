@@ -5,6 +5,7 @@ import { getDealActivities } from "@/lib/services/activity.service";
 import { getDealFollowUps } from "@/lib/services/follow-up.service";
 import { getOrganizationMembers } from "@/lib/services/user.service";
 import { getActivePipelinesWithStages } from "@/lib/services/pipeline.service";
+import { getDealHealth } from "@/lib/services/crm-health.service";
 import { DealDetailView } from "@/components/deals/deal-detail-view";
 import { type ActivityWithRelations } from "@/lib/types/activities";
 import { type FollowUpWithRelations } from "@/lib/types/follow-ups";
@@ -35,7 +36,7 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
   const canViewActivities = ctx.hasPermission("activities.view");
   const canViewFollowUps = ctx.hasPermission("follow_ups.view");
 
-  const [activities, followUps, membersResult, pipelines] = await Promise.all([
+  const [activities, followUps, membersResult, pipelines, health] = await Promise.all([
     canViewActivities
       ? getDealActivities(ctx.organization.id, id)
       : Promise.resolve([] as ActivityWithRelations[]),
@@ -44,6 +45,7 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
       : Promise.resolve([] as FollowUpWithRelations[]),
     getOrganizationMembers(ctx.organization.id),
     getActivePipelinesWithStages(ctx.organization.id),
+    getDealHealth(ctx.organization.id, id).catch(() => null),
   ]);
 
   const members = membersResult.map((m) => ({
@@ -55,6 +57,7 @@ export default async function DealDetailPage({ params }: DealDetailPageProps) {
   return (
     <DealDetailView
       deal={deal}
+      health={health}
       pipelines={pipelines}
       activities={activities}
       followUps={followUps}

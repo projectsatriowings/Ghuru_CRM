@@ -3,18 +3,17 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  type LeadWithRelations,
-  LEAD_SOURCE_LABELS,
-} from "@/lib/types/leads";
+import { type LeadWithRelations, LEAD_SOURCE_LABELS } from "@/lib/types/leads";
 import { type PipelineWithStages } from "@/lib/types/pipelines";
 import { type ActivityWithRelations } from "@/lib/types/activities";
 import { type FollowUpWithRelations } from "@/lib/types/follow-ups";
+import { type EntityHealthResult } from "@/lib/types/intelligence";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { ArchiveLeadDialog } from "./archive-lead-dialog";
 import { LeadPipelineCard } from "./lead-pipeline-card";
 import { LeadCompanyCard } from "./lead-company-card";
 import { ConvertLeadDialog } from "./convert-lead-dialog";
+import { EntityHealthCard } from "@/components/intelligence/entity-health-card";
 import { ActivityTimeline } from "@/components/activities/activity-timeline";
 import { FollowUpSection } from "@/components/follow-ups/follow-up-section";
 import { CustomFieldValueDisplay } from "@/components/custom-fields/custom-field-renderer";
@@ -38,6 +37,7 @@ import {
 
 interface LeadDetailViewProps {
   lead: LeadWithRelations;
+  health?: EntityHealthResult | null;
   pipelines?: PipelineWithStages[];
   activities?: ActivityWithRelations[];
   followUps?: FollowUpWithRelations[];
@@ -59,6 +59,7 @@ interface LeadDetailViewProps {
 
 export function LeadDetailView({
   lead,
+  health = null,
   pipelines = [],
   activities = [],
   followUps = [],
@@ -365,6 +366,10 @@ export function LeadDetailView({
 
         {/* Right Column (Sidebar Summary) */}
         <div className="space-y-6">
+          {health && (
+            <EntityHealthCard health={health} />
+          )}
+
           {/* Pipeline & Stage Section */}
           <LeadPipelineCard
             lead={lead}

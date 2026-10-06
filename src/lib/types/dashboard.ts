@@ -144,19 +144,28 @@ export type NeedsAttentionCategory =
   | "overdue_follow_up"
   | "past_due_activity"
   | "no_next_action"
-  | "uncontacted_lead";
+  | "uncontacted_lead"
+  | "stale_lead"
+  | "stale_deal"
+  | "high_value_stale"
+  | "approaching_close";
 
 export interface NeedsAttentionItem {
   id: string;
-  category: NeedsAttentionCategory;
+  category: string;
   title: string;
   description: string;
-  entityType: "lead" | "contact" | "company";
+  entityType: "lead" | "contact" | "company" | "deal";
   entityId: string;
   entityName: string;
-  urgency: "high" | "medium";
+  urgency: "critical" | "high" | "medium" | "low";
   timestamp: Date | string;
   link: string;
+  recommendedAction?: string;
+  severity?: "critical" | "high" | "medium" | "low";
+  signalType?: string;
+  value?: number | null;
+  currency?: string | null;
 }
 
 export interface DashboardData {

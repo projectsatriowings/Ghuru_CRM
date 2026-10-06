@@ -187,6 +187,10 @@ export const INITIAL_PERMISSIONS = [
     key: "automations.delete",
     description: "Archive or delete automations in the organization",
   },
+  {
+    key: "intelligence.view",
+    description: "View organization CRM health, operational risks, and attention intelligence",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

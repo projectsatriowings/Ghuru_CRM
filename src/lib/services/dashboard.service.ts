@@ -35,6 +35,7 @@ import {
 } from "@/lib/types/leads";
 import { resolveDateRange } from "@/lib/utils/date-range-utils";
 import { NotFoundError } from "@/lib/errors";
+import { getOrganizationAttentionItems } from "@/lib/services/crm-health.service";
 import { eq, and, isNull, inArray, gte, lte, lt, desc, asc, sql } from "drizzle-orm";
 
 export interface DashboardQueryOptions {
@@ -943,7 +944,7 @@ export async function getMyWorkMetrics(
 }
 
 /**
- * Deterministic Needs Attention Items
+ * Deterministic Needs Attention Items powered by the CRM Health & Intelligence Engine
  */
 export async function getNeedsAttentionItems(
   organizationId: string,
@@ -963,152 +964,46 @@ export async function getNeedsAttentionItems(
     if (typeof obj.assigneeId === "string") assigneeIdFilter = obj.assigneeId;
   }
 
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const items: NeedsAttentionItem[] = [];
+  // Pull from the CRM Health Intelligence Engine
+  const intelligence = await getOrganizationAttentionItems(
+    organizationId,
+    { assigneeId: assigneeIdFilter, pageSize: 25 },
+    dbInstance
+  );
 
-  // 1. Overdue follow-ups
-  const fuConditions = [
-    eq(followUps.organizationId, organizationId),
-    eq(followUps.status, "pending"),
-    lt(followUps.dueDate, todayStr),
-    isNull(followUps.archivedAt),
-  ];
+  const items: NeedsAttentionItem[] = intelligence.items.map((item) => {
+    let category = item.signalType as string;
+    if (
+      item.signalType === "overdue_lead_follow_up" ||
+      item.signalType === "overdue_deal_follow_up"
+    ) {
+      category = "overdue_follow_up";
+    } else if (
+      item.signalType === "qualified_lead_no_next_action" ||
+      item.signalType === "deal_no_next_action" ||
+      item.signalType === "new_lead_no_contact"
+    ) {
+      category = "no_next_action";
+    }
 
-  if (assigneeIdFilter) {
-    fuConditions.push(eq(followUps.assignedToUserId, assigneeIdFilter));
-  }
-
-  const overdueFollowUps = await dbInstance
-    .select({
-      id: followUps.id,
-      title: followUps.title,
-      dueDate: followUps.dueDate,
-      dueTime: followUps.dueTime,
-      leadId: followUps.leadId,
-      leadFirstName: leads.firstName,
-      leadLastName: leads.lastName,
-    })
-    .from(followUps)
-    .innerJoin(leads, eq(followUps.leadId, leads.id))
-    .where(and(...fuConditions))
-    .orderBy(asc(followUps.dueDate))
-    .limit(6);
-
-  for (const fu of overdueFollowUps) {
-    items.push({
-      id: `overdue_fu_${fu.id}`,
-      category: "overdue_follow_up",
-      title: `Overdue Follow-up: ${fu.title}`,
-      description: `Due on ${fu.dueDate}${fu.dueTime ? ` at ${fu.dueTime}` : ""}`,
-      entityType: "lead",
-      entityId: fu.leadId!,
-      entityName: `${fu.leadFirstName} ${fu.leadLastName || ""}`.trim(),
-      urgency: "high",
-      timestamp: fu.dueDate,
-      link: `/leads/${fu.leadId!}`,
-    });
-  }
-
-  // 2. Pending activities past due
-  const actConditions = [
-    eq(activities.organizationId, organizationId),
-    eq(activities.status, "pending"),
-    lt(activities.dueAt, now),
-    isNull(activities.archivedAt),
-  ];
-
-  if (assigneeIdFilter) {
-    actConditions.push(
-      sql`(${activities.assignedToUserId} = ${assigneeIdFilter} or ${activities.createdByUserId} = ${assigneeIdFilter})`
-    );
-  }
-
-  const pastDueActivities = await dbInstance
-    .select({
-      id: activities.id,
-      title: activities.title,
-      type: activities.type,
-      dueAt: activities.dueAt,
-      entityType: activities.entityType,
-      entityId: activities.entityId,
-    })
-    .from(activities)
-    .where(and(...actConditions))
-    .orderBy(asc(activities.dueAt))
-    .limit(6);
-
-  for (const act of pastDueActivities) {
-    const route =
-      act.entityType === "contact"
-        ? `/contacts/${act.entityId}`
-        : act.entityType === "company"
-        ? `/companies/${act.entityId}`
-        : `/leads/${act.entityId}`;
-
-    items.push({
-      id: `past_due_act_${act.id}`,
-      category: "past_due_activity",
-      title: `Overdue Activity: ${act.title}`,
-      description: `Task past due date`,
-      entityType: act.entityType as "lead" | "contact" | "company",
-      entityId: act.entityId,
-      entityName: `${act.entityType.toUpperCase()} ${act.entityId.slice(0, 8)}`,
-      urgency: "high",
-      timestamp: act.dueAt || now,
-      link: route,
-    });
-  }
-
-  // 3. Active Leads with no pending follow-up (Needs Next Action)
-  const leadConditions = [
-    eq(leads.organizationId, organizationId),
-    isNull(leads.archivedAt),
-    sql`${leads.status} NOT IN ('converted', 'lost')`,
-  ];
-
-  if (assigneeIdFilter) {
-    leadConditions.push(eq(leads.assignedToUserId, assigneeIdFilter));
-  }
-
-  // Active leads without pending follow-up
-  const leadsWithoutAction = await dbInstance
-    .select({
-      id: leads.id,
-      firstName: leads.firstName,
-      lastName: leads.lastName,
-      status: leads.status,
-      updatedAt: leads.updatedAt,
-    })
-    .from(leads)
-    .where(
-      and(
-        ...leadConditions,
-        sql`NOT EXISTS (
-          SELECT 1 FROM ${followUps}
-          WHERE ${followUps.leadId} = ${leads.id}
-            AND ${followUps.status} = 'pending'
-            AND ${followUps.archivedAt} IS NULL
-        )`
-      )
-    )
-    .orderBy(desc(leads.updatedAt))
-    .limit(6);
-
-  for (const l of leadsWithoutAction) {
-    items.push({
-      id: `no_action_lead_${l.id}`,
-      category: "no_next_action",
-      title: `No Next Action: ${l.firstName} ${l.lastName || ""}`.trim(),
-      description: `Status: ${l.status}. No follow-up scheduled.`,
-      entityType: "lead",
-      entityId: l.id,
-      entityName: `${l.firstName} ${l.lastName || ""}`.trim(),
-      urgency: "medium",
-      timestamp: l.updatedAt,
-      link: `/leads/${l.id}`,
-    });
-  }
+    return {
+      id: item.id,
+      category,
+      title: item.title,
+      description: item.description,
+      entityType: item.entityType,
+      entityId: item.entityId,
+      entityName: item.entityName,
+      urgency: item.severity,
+      timestamp: item.detectedAt,
+      link: item.link,
+      recommendedAction: item.recommendedAction,
+      severity: item.severity,
+      signalType: item.signalType,
+      value: item.value,
+      currency: item.currency,
+    };
+  });
 
   return items;
 }
