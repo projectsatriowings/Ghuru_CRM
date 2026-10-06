@@ -1,0 +1,43 @@
+import { NextRequest } from "next/server";
+import { requireOrganization } from "@/lib/context/organization-context";
+import { getTeamIntelligence } from "@/lib/services/team-owner-intelligence.service";
+import { dashboardQuerySchema } from "@/lib/validations/dashboard";
+import { apiSuccess, apiError } from "@/lib/api-response";
+import { ForbiddenError } from "@/lib/errors";
+
+export async function GET(req: NextRequest) {
+  try {
+    const ctx = await requireOrganization();
+
+    if (
+      !ctx.hasPermission("intelligence.view") &&
+      !ctx.hasPermission("dashboard.view") &&
+      !ctx.hasPermission("organization.view")
+    ) {
+      throw new ForbiddenError(
+        "Forbidden: You do not have permission to view CRM team intelligence."
+      );
+    }
+
+    const { searchParams } = new URL(req.url);
+    const query = dashboardQuerySchema.parse({
+      preset: searchParams.get("preset") || undefined,
+      from: searchParams.get("from") || undefined,
+      to: searchParams.get("to") || undefined,
+      assigneeId: searchParams.get("assigneeId") || undefined,
+      pipelineId: searchParams.get("pipelineId") || undefined,
+    });
+
+    const teams = await getTeamIntelligence(ctx.organization.id, {
+      preset: query.preset,
+      from: query.from ? new Date(query.from) : undefined,
+      to: query.to ? new Date(query.to) : undefined,
+      assigneeId: query.assigneeId,
+      pipelineId: query.pipelineId,
+    });
+
+    return apiSuccess(teams);
+  } catch (error) {
+    return apiError(error);
+  }
+}

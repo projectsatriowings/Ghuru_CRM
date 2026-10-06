@@ -186,6 +186,13 @@ import {
   type PeriodComparisonData,
   type CurrencyAmountMap,
 } from "./pipeline-intelligence";
+import {
+  type TeamAndOwnerIntelligenceData,
+  type OwnerIntelligenceItem,
+  type TeamIntelligenceItem,
+  type UnassignedWorkload,
+  type WorkloadConcentrationIndicators,
+} from "./team-owner-intelligence";
 
 export type {
   PipelineAndConversionIntelligence,
@@ -195,6 +202,11 @@ export type {
   PipelineBottleneckItem,
   PeriodComparisonData,
   CurrencyAmountMap,
+  TeamAndOwnerIntelligenceData,
+  OwnerIntelligenceItem,
+  TeamIntelligenceItem,
+  UnassignedWorkload,
+  WorkloadConcentrationIndicators,
 };
 
 export interface DashboardData {
@@ -212,6 +224,7 @@ export interface DashboardData {
   myWork: MyWorkMetrics;
   needsAttention: NeedsAttentionItem[];
   intelligence?: PipelineAndConversionIntelligence;
+  teamIntelligence?: TeamAndOwnerIntelligenceData;
 }
 
 export type DashboardWidgetKey =
@@ -229,7 +242,11 @@ export type DashboardWidgetKey =
   | "source_performance"
   | "pipeline_intelligence"
   | "pipeline_bottlenecks"
-  | "period_comparison";
+  | "period_comparison"
+  | "unassigned_work"
+  | "owner_workload"
+  | "owner_comparison"
+  | "team_intelligence";
 
 export interface DashboardWidgetConfig {
   key: DashboardWidgetKey;
@@ -299,5 +316,29 @@ export const DASHBOARD_WIDGET_CONFIGS: DashboardWidgetConfig[] = [
     label: "Operational Activities",
     defaultVisible: true,
     allowedRoles: ["Organization Admin", "manager", "counsellor", "sales"],
+  },
+  {
+    key: "unassigned_work",
+    label: "Unassigned Workload",
+    defaultVisible: true,
+    allowedRoles: ["Organization Admin", "manager", "counsellor", "sales"],
+  },
+  {
+    key: "owner_workload",
+    label: "Owner Workload & Concentration",
+    defaultVisible: true,
+    allowedRoles: ["Organization Admin", "manager", "sales"],
+  },
+  {
+    key: "owner_comparison",
+    label: "Owner Performance Comparison",
+    defaultVisible: true,
+    allowedRoles: ["Organization Admin", "manager", "sales"],
+  },
+  {
+    key: "team_intelligence",
+    label: "Team Intelligence & Performance",
+    defaultVisible: true,
+    allowedRoles: ["Organization Admin", "manager", "sales"],
   },
 ];

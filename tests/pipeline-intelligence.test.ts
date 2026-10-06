@@ -61,6 +61,7 @@ describe("Milestone 2.10B — Pipeline & Conversion Intelligence Foundation Test
       "0011_chubby_pete_wisdom.sql",
       "0012_amused_sheva_callister.sql",
       "0013_regular_silk_fever.sql",
+      "0014_flimsy_gorilla_man.sql",
     ];
 
     for (const file of migrationFiles) {
@@ -149,6 +150,7 @@ describe("Milestone 2.10B — Pipeline & Conversion Intelligence Foundation Test
     stageA1NewId = stage1.id;
     const stage2 = await createStage(orgAId, pipelineA1Id, { name: "Demo", displayOrder: 2 }, testDb);
     stageA1DemoId = stage2.id;
+    void stageA1DemoId;
     const stage3 = await createStage(orgAId, pipelineA1Id, { name: "Proposal", displayOrder: 3 }, testDb);
     stageA1ProposalId = stage3.id;
     const stage4 = await createStage(orgAId, pipelineA1Id, { name: "Negotiation", displayOrder: 4 }, testDb);

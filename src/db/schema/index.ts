@@ -10,3 +10,4 @@ export * from "./contacts";
 export * from "./companies";
 export * from "./deals";
 export * from "./automations";
+export * from "./teams";

@@ -191,6 +191,22 @@ export const INITIAL_PERMISSIONS = [
     key: "intelligence.view",
     description: "View organization CRM health, operational risks, and attention intelligence",
   },
+  {
+    key: "teams.view",
+    description: "View organization teams and team memberships",
+  },
+  {
+    key: "teams.create",
+    description: "Create new teams in the organization",
+  },
+  {
+    key: "teams.update",
+    description: "Update team details and manage team members",
+  },
+  {
+    key: "teams.delete",
+    description: "Archive or delete teams in the organization",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

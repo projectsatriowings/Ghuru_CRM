@@ -14,6 +14,10 @@ import { SourcePerformanceWidget } from "./source-performance-widget";
 import { PipelineHealthWidget } from "./pipeline-health-widget";
 import { PipelineBottleneckWidget } from "./pipeline-bottleneck-widget";
 import { PeriodComparisonWidget } from "./period-comparison-widget";
+import { UnassignedWorkWidget } from "./unassigned-work-widget";
+import { OwnerWorkloadWidget } from "./owner-workload-widget";
+import { OwnerComparisonTable } from "./owner-comparison-table";
+import { TeamIntelligenceWidget } from "./team-intelligence-widget";
 import {
   type DashboardData,
   type DashboardDateRangePreset,
@@ -147,6 +151,26 @@ export function DashboardShell({
         <ActivityWidget activities={data.activities} />
         <ConversionWidget conversion={data.conversion} />
       </div>
+
+      {/* Milestone 2.10C: Team & Owner Intelligence */}
+      {data.teamIntelligence && (
+        <div className="space-y-6 pt-2">
+          {/* Unassigned Work Alert & Metrics */}
+          <UnassignedWorkWidget unassigned={data.teamIntelligence.unassigned} />
+
+          {/* Workload Concentration Indicators */}
+          <OwnerWorkloadWidget
+            indicators={data.teamIntelligence.indicators}
+            owners={data.teamIntelligence.owners}
+          />
+
+          {/* Owner Performance & Workload Comparison Table */}
+          <OwnerComparisonTable owners={data.teamIntelligence.owners} />
+
+          {/* Team Aggregation & Intelligence */}
+          <TeamIntelligenceWidget teams={data.teamIntelligence.teams} />
+        </div>
+      )}
 
       {/* Role and Data Context */}
       <div className="pt-2 text-right text-[11px] text-slate-400">

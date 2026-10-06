@@ -45,6 +45,12 @@ import {
   getPipelineBottlenecks,
   getPeriodComparisonMetrics,
 } from "@/lib/services/pipeline-intelligence.service";
+import {
+  getTeamAndOwnerIntelligence,
+  getOwnerIntelligence,
+  getTeamIntelligence,
+  getUnassignedWorkload,
+} from "@/lib/services/team-owner-intelligence.service";
 import { eq, and, isNull, inArray, gte, lte, lt, desc, asc, sql } from "drizzle-orm";
 
 export {
@@ -54,6 +60,10 @@ export {
   getDealPipelineIntelligence,
   getPipelineBottlenecks,
   getPeriodComparisonMetrics,
+  getTeamAndOwnerIntelligence,
+  getOwnerIntelligence,
+  getTeamIntelligence,
+  getUnassignedWorkload,
 };
 
 export type { DashboardQueryOptions };
@@ -1052,7 +1062,7 @@ export async function getDashboardData(
   }
 
   // 4. Execute all analytics queries in parallel
-  const [
+    const [
     leadsMetrics,
     sourcesMetrics,
     pipelineMetrics,
@@ -1062,6 +1072,7 @@ export async function getDashboardData(
     myWorkMetrics,
     needsAttentionItems,
     pipelineIntelligence,
+    teamOwnerIntelligence,
   ] = await Promise.all([
     getLeadMetrics(organizationId, { dateRange, assigneeId: resolvedAssigneeId, pipelineId: resolvedPipelineId }, dbInstance),
     getLeadSourceMetrics(organizationId, { dateRange, assigneeId: resolvedAssigneeId, pipelineId: resolvedPipelineId }, dbInstance),
@@ -1072,6 +1083,7 @@ export async function getDashboardData(
     getMyWorkMetrics(organizationId, currentUserId, { dateRange }, dbInstance),
     getNeedsAttentionItems(organizationId, { assigneeId: resolvedAssigneeId }, dbInstance),
     getPipelineAndConversionIntelligence(organizationId, { dateRange, assigneeId: resolvedAssigneeId, pipelineId: resolvedPipelineId }, resolvedAssigneeId, resolvedPipelineId, dbInstance),
+    getTeamAndOwnerIntelligence(organizationId, { dateRange, assigneeId: resolvedAssigneeId, pipelineId: resolvedPipelineId }, resolvedAssigneeId, resolvedPipelineId, dbInstance),
   ]);
 
   return {
@@ -1089,5 +1101,6 @@ export async function getDashboardData(
     myWork: myWorkMetrics,
     needsAttention: needsAttentionItems,
     intelligence: pipelineIntelligence,
+    teamIntelligence: teamOwnerIntelligence,
   };
 }
