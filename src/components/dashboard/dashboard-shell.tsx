@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
+import Link from "next/link";
+import { Sparkles } from "lucide-react";
 import { DashboardFilters } from "./dashboard-filters";
 import { MetricCardsWidget } from "./metric-cards-widget";
 import { MyWorkWidget } from "./my-work-widget";
@@ -35,6 +37,7 @@ interface DashboardShellProps {
   currentUserId: string;
   roleName: string;
   canViewAI?: boolean;
+  canViewAIGovernance?: boolean;
 }
 
 export function DashboardShell({
@@ -44,6 +47,7 @@ export function DashboardShell({
   currentUserId,
   roleName,
   canViewAI = true,
+  canViewAIGovernance = false,
 }: DashboardShellProps) {
   const [data, setData] = useState<DashboardData>(initialData);
   const [isPending, startTransition] = useTransition();
@@ -158,6 +162,15 @@ export function DashboardShell({
             >
               Explain Overdue Tasks
             </button>
+            {canViewAIGovernance && (
+              <Link
+                href="/settings/ai"
+                className="px-2.5 py-1 rounded bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors text-[11px] font-medium flex items-center gap-1.5 ml-auto cursor-pointer"
+              >
+                <Sparkles className="h-3 w-3 text-purple-600" />
+                <span>AI Governance</span>
+              </Link>
+            )}
           </div>
         </div>
       )}

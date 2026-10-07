@@ -211,6 +211,14 @@ export const INITIAL_PERMISSIONS = [
     key: "ai.view",
     description: "View AI intelligence briefing, recommendations, metric explanations, and CRM Q&A",
   },
+  {
+    key: "ai_governance.view",
+    description: "View AI usage, audit events, provider status, and governance metrics",
+  },
+  {
+    key: "ai_governance.manage",
+    description: "Modify organization-level AI governance settings and quotas",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

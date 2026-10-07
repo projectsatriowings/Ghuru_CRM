@@ -60,6 +60,7 @@ export default async function DashboardPage() {
         currentUserId={ctx.user.id}
         roleName={ctx.role.name}
         canViewAI={ctx.hasPermission("ai.view")}
+        canViewAIGovernance={ctx.hasPermission("ai_governance.view")}
       />
     </div>
   );

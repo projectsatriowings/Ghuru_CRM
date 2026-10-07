@@ -85,7 +85,7 @@ export async function assertOrganizationAIQuota(
   if (!settings.aiEnabled) {
     throw new AIError(
       "AI_REQUEST_LIMIT_EXCEEDED",
-      "AI intelligence is disabled for this organization by administrative policy.",
+      "AI intelligence is currently disabled for this organization. Standard CRM intelligence remains available.",
       403,
       correlationId
     );
@@ -231,3 +231,61 @@ export async function getOrganizationAIUsage(
     },
   };
 }
+
+/**
+ * Updates an organization's AI governance settings and quotas.
+ * Guarantees strict multi-tenant scoping.
+ */
+export async function updateOrganizationAISettings(
+  organizationId: string,
+  input: {
+    aiEnabled?: boolean;
+    dailyRequestLimit?: number;
+    monthlyRequestLimit?: number;
+  },
+  dbInstance: DbClient = db as DbClient
+): Promise<OrganizationAISettingsRecord> {
+  const current = await getOrganizationAISettings(organizationId, dbInstance);
+
+  const newAiEnabled = input.aiEnabled !== undefined ? input.aiEnabled : current.aiEnabled;
+  const newDailyLimit = input.dailyRequestLimit !== undefined ? input.dailyRequestLimit : current.dailyRequestLimit;
+  const newMonthlyLimit = input.monthlyRequestLimit !== undefined ? input.monthlyRequestLimit : current.monthlyRequestLimit;
+
+  const [existing] = await dbInstance
+    .select({ id: organizationAiSettings.id })
+    .from(organizationAiSettings)
+    .where(eq(organizationAiSettings.organizationId, organizationId))
+    .limit(1);
+
+  if (existing) {
+    await dbInstance
+      .update(organizationAiSettings)
+      .set({
+        aiEnabled: newAiEnabled,
+        dailyRequestLimit: newDailyLimit,
+        monthlyRequestLimit: newMonthlyLimit,
+        updatedAt: new Date(),
+      })
+      .where(eq(organizationAiSettings.organizationId, organizationId));
+  } else {
+    await dbInstance
+      .insert(organizationAiSettings)
+      .values({
+        id: crypto.randomUUID(),
+        organizationId,
+        aiEnabled: newAiEnabled,
+        dailyRequestLimit: newDailyLimit,
+        monthlyRequestLimit: newMonthlyLimit,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+  }
+
+  return {
+    organizationId,
+    aiEnabled: newAiEnabled,
+    dailyRequestLimit: newDailyLimit,
+    monthlyRequestLimit: newMonthlyLimit,
+  };
+}
+
