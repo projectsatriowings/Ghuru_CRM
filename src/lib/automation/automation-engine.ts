@@ -15,6 +15,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { evaluateConditionGroups } from "./condition-evaluator";
 import { ACTION_HANDLERS, ActionExecutionContext } from "./action-registry";
 import { getCustomFieldValuesForEntity } from "@/lib/services/custom-field.service";
+import { publishIntegrationEvent } from "@/lib/services/integrations/integration-event.service";
 
 export const MAX_AUTOMATION_DEPTH = 5;
 
@@ -165,6 +166,52 @@ export async function emitAutomationEvent(
     if (!entitySnapshot) {
       // Entity not found or archived; do not execute automations
       return summary;
+    }
+
+    // Bridge root domain events to generic integration platform subscribers (webhooks)
+    if (currentContext.depth === 0) {
+      let integrationEventType = `${event.entityType}.${
+        event.eventType === "entity_created"
+          ? "created"
+          : event.eventType === "entity_updated"
+          ? "updated"
+          : event.eventType === "entity_status_changed"
+          ? "status_changed"
+          : event.eventType === "entity_assigned"
+          ? "assigned"
+          : event.eventType === "pipeline_stage_changed"
+          ? "stage_changed"
+          : event.eventType
+      }`;
+
+      if (event.entityType === "deal" && event.eventType === "entity_status_changed") {
+        const dealStatus = entitySnapshot.status as string;
+        if (dealStatus === "won") integrationEventType = "deal.won";
+        else if (dealStatus === "lost") integrationEventType = "deal.lost";
+      }
+
+      void publishIntegrationEvent(
+        {
+          organizationId: event.organizationId,
+          eventType: integrationEventType,
+          entityType: event.entityType,
+          entityId: event.entityId,
+          payload: {
+            snapshot: entitySnapshot,
+            previous: event.payload?.previous ?? null,
+          },
+          metadata: {
+            actorUserId: event.actorUserId ?? null,
+            correlationId: currentContext.correlationId,
+          },
+        },
+        dbInstance
+      ).catch((err) => {
+        console.error(
+          "[AutomationEngine] Failed to dispatch integration event:",
+          err
+        );
+      });
     }
 
     // 2. Fetch active automations matching (orgId, entityType, triggerType, active=true, archivedAt is null)

@@ -90,6 +90,8 @@ describe("Milestone 2.10D — AI Intelligence Foundation Test Suite", () => {
       "0013_regular_silk_fever.sql",
       "0014_flimsy_gorilla_man.sql",
       "0015_puzzling_swarm.sql",
+      "0016_salty_the_liberteens.sql",
+      "0017_minor_starfox.sql",
     ];
 
     for (const file of migrationFiles) {

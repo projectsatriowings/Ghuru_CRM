@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Building2, Users, ShieldCheck, SlidersHorizontal, GitBranch, Sparkles } from "lucide-react";
+import { Building2, Users, ShieldCheck, SlidersHorizontal, GitBranch, Sparkles, Blocks } from "lucide-react";
 
 interface SettingsNavProps {
   permissions: string[];
@@ -49,6 +49,12 @@ export function SettingsNav({ permissions }: SettingsNavProps) {
       href: "/settings/ai",
       icon: Sparkles,
       permission: "ai_governance.view",
+    },
+    {
+      title: "Integrations",
+      href: "/settings/integrations",
+      icon: Blocks,
+      permission: "integrations.view",
     },
   ];
 

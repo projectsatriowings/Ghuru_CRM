@@ -15,6 +15,7 @@ import {
   Briefcase,
   Zap,
   Sparkles,
+  Blocks,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -90,6 +91,12 @@ export function Sidebar({ permissions }: SidebarProps) {
       href: "/settings/ai",
       icon: Sparkles,
       permission: "ai_governance.view",
+    },
+    {
+      title: "Integrations",
+      href: "/settings/integrations",
+      icon: Blocks,
+      permission: "integrations.view",
     },
   ];
 

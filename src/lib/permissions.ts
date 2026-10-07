@@ -219,6 +219,34 @@ export const INITIAL_PERMISSIONS = [
     key: "ai_governance.manage",
     description: "Modify organization-level AI governance settings and quotas",
   },
+  {
+    key: "integrations.view",
+    description: "View organization integrations, providers, webhooks, and API keys",
+  },
+  {
+    key: "integrations.connect",
+    description: "Connect and configure external integration providers",
+  },
+  {
+    key: "integrations.update",
+    description: "Update integration configuration and toggle active status",
+  },
+  {
+    key: "integrations.disconnect",
+    description: "Disconnect or remove external integration connections",
+  },
+  {
+    key: "integrations.test",
+    description: "Test integration connectivity and provider status",
+  },
+  {
+    key: "webhooks.manage",
+    description: "Create, update, test, and delete outbound webhooks",
+  },
+  {
+    key: "api_keys.manage",
+    description: "Create, view, and revoke organization API keys",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

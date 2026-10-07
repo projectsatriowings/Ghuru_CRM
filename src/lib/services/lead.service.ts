@@ -41,6 +41,7 @@ import {
 import { validateCustomFieldValue } from "@/lib/validations/custom-field";
 import { NotFoundError, ValidationError } from "@/lib/errors";
 import { emitAutomationEvent } from "@/lib/automation/automation-engine";
+import { publishIntegrationEvent } from "@/lib/services/integrations/integration-event.service";
 
 export interface PaginatedLeadsResult {
   data: LeadWithRelations[];
@@ -1181,5 +1182,29 @@ export async function convertLead(
   }
 
   const updatedLead = await getLeadById(organizationId, leadId, dbInstance);
+
+  void publishIntegrationEvent(
+    {
+      organizationId,
+      eventType: "lead.converted",
+      entityType: "lead",
+      entityId: leadId,
+      payload: {
+        lead: updatedLead,
+        contactId,
+        mode: input.mode,
+      },
+      metadata: {
+        actorUserId,
+      },
+    },
+    dbInstance
+  ).catch((err) => {
+    console.error(
+      "[LeadService] Failed to dispatch lead.converted integration event:",
+      err
+    );
+  });
+
   return { lead: updatedLead, contactId };
 }
