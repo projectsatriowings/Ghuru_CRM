@@ -3,12 +3,18 @@ import {
 } from "@/lib/types/connector";
 import { IntegrationCapability } from "@/lib/types/integrations";
 
+import { whatsAppConnector } from "@/lib/connectors/whatsapp/whatsapp-connector";
+
 /**
  * In-memory registry for provider connector implementations.
  * Connectors register at runtime or application boot.
  */
 class ConnectorRegistry {
   private connectors = new Map<string, IntegrationConnector>();
+
+  constructor() {
+    this.register(whatsAppConnector);
+  }
 
   /**
    * Registers a connector adapter for a specific provider key.
@@ -31,6 +37,9 @@ class ConnectorRegistry {
    * Resolves a connector implementation for a provider key.
    */
   public get(providerKey: string): IntegrationConnector | undefined {
+    if (!this.connectors.has(providerKey) && providerKey === "whatsapp") {
+      this.register(whatsAppConnector);
+    }
     return this.connectors.get(providerKey);
   }
 
@@ -38,6 +47,9 @@ class ConnectorRegistry {
    * Checks whether a connector is registered for a provider key.
    */
   public has(providerKey: string): boolean {
+    if (!this.connectors.has(providerKey) && providerKey === "whatsapp") {
+      this.register(whatsAppConnector);
+    }
     return this.connectors.has(providerKey);
   }
 

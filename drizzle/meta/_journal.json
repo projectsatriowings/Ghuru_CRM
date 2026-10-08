@@ -127,6 +127,13 @@
       "when": 1791367759903,
       "tag": "0017_minor_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791452907451,
+      "tag": "0018_mute_boom_boom",
+      "breakpoints": true
     }
   ]
 }

@@ -247,6 +247,14 @@ export const INITIAL_PERMISSIONS = [
     key: "api_keys.manage",
     description: "Create, view, and revoke organization API keys",
   },
+  {
+    key: "messaging.view",
+    description: "View conversations, messages, and delivery statuses",
+  },
+  {
+    key: "messaging.send",
+    description: "Send outbound messages across channels",
+  },
 ] as const;
 
 export type PermissionKey = (typeof INITIAL_PERMISSIONS)[number]["key"];

@@ -18,10 +18,26 @@ import { IntegrationError } from "./integration-errors";
 import { eq, and, desc, count } from "drizzle-orm";
 import { NotFoundError } from "@/lib/errors";
 
+import {
+  saveInboundMessage,
+  updateMessageDeliveryStatus,
+} from "@/lib/services/messaging/messaging.service";
+import { MessageType, MessageStatus } from "@/lib/types/messaging";
+
 export interface ProcessInboundWebhookRequest {
   rawBody: string;
   headers: Headers | Record<string, string>;
   query?: Record<string, string>;
+}
+
+export interface WebhookChallengeRequest {
+  query: Record<string, string>;
+}
+
+export interface WebhookChallengeResult {
+  success: boolean;
+  challenge?: string;
+  reason?: string;
 }
 
 export interface InboundWebhookProcessResult {
@@ -111,7 +127,13 @@ export async function processInboundWebhook(
     try {
       const parsed = JSON.parse(rawCredentials);
       if (typeof parsed === "object" && parsed !== null) {
-        resolvedSecret = parsed.signing_secret || parsed.api_key || rawCredentials;
+        resolvedSecret =
+          parsed.signing_secret ||
+          parsed.appSecret ||
+          parsed.app_secret ||
+          parsed.api_key ||
+          parsed.secret ||
+          rawCredentials;
       }
     } catch {
       resolvedSecret = rawCredentials;
@@ -269,6 +291,45 @@ export async function processInboundWebhook(
         },
         dbInstance
       );
+
+      // CRM Domain Services Handler
+      if (event.eventType === "message.received") {
+        const p = event.payload as Record<string, unknown>;
+        await saveInboundMessage(
+          {
+            organizationId,
+            integrationId,
+            channel: (p.channel as string) || providerKey,
+            externalMessageId:
+              (p.externalMessageId as string) || event.externalEventId,
+            sender: String(p.sender || ""),
+            recipient: String(p.recipient || ""),
+            senderName: p.senderName as string | undefined,
+            messageType: (p.messageType as MessageType) || "text",
+            body: String(p.body || ""),
+            mediaUrl: p.mediaUrl as string | undefined,
+            mediaType: p.mediaType as string | undefined,
+            mediaId: p.mediaId as string | undefined,
+            metadata: event.metadata,
+            timestamp: event.occurredAt,
+          },
+          dbInstance
+        );
+      } else if (event.eventType === "message.status_updated") {
+        const p = event.payload as Record<string, unknown>;
+        await updateMessageDeliveryStatus(
+          {
+            organizationId,
+            integrationId,
+            externalMessageId:
+              (p.externalMessageId as string) || event.externalEventId,
+            status: (p.status as MessageStatus) || "delivered",
+            timestamp: event.occurredAt,
+            errorMessage: p.error as string | undefined,
+          },
+          dbInstance
+        );
+      }
 
       // Mark processed
       await dbInstance
@@ -432,5 +493,88 @@ export async function getInboundEventById(
     processedAt: row.processedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+/**
+ * Handles Webhook verification challenge (such as Meta WhatsApp Cloud API GET challenge).
+ */
+export async function verifyWebhookChallenge(
+  integrationId: string,
+  request: WebhookChallengeRequest,
+  dbInstance: DbClient = db as DbClient
+): Promise<WebhookChallengeResult> {
+  const [row] = await dbInstance
+    .select({
+      id: organizationIntegrations.id,
+      organizationId: organizationIntegrations.organizationId,
+      status: organizationIntegrations.status,
+      config: organizationIntegrations.config,
+      providerKey: integrationProviders.key,
+    })
+    .from(organizationIntegrations)
+    .innerJoin(
+      integrationProviders,
+      eq(organizationIntegrations.providerId, integrationProviders.id)
+    )
+    .where(eq(organizationIntegrations.id, integrationId))
+    .limit(1);
+
+  if (!row) {
+    throw new NotFoundError(
+      `Integration endpoint '${integrationId}' does not exist.`
+    );
+  }
+
+  const connector = connectorRegistry.get(row.providerKey);
+  if (!connector || !connector.verifyInboundWebhook) {
+    throw new IntegrationError(
+      "UNSUPPORTED_CAPABILITY",
+      `Connector for '${row.providerKey}' does not support webhook challenge verification.`,
+      { providerKey: row.providerKey, statusCode: 501 }
+    );
+  }
+
+  const rawCredentials = await getDecryptedCredentials(
+    row.organizationId,
+    integrationId,
+    dbInstance
+  );
+
+  let resolvedSecret = rawCredentials || undefined;
+  if (rawCredentials) {
+    try {
+      const parsed = JSON.parse(rawCredentials);
+      if (typeof parsed === "object" && parsed !== null) {
+        resolvedSecret =
+          parsed.verify_token ||
+          parsed.verifyToken ||
+          parsed.secret ||
+          rawCredentials;
+      }
+    } catch {
+      resolvedSecret = rawCredentials;
+    }
+  }
+
+  const verification = await connector.verifyInboundWebhook({
+    rawBody: "",
+    headers: {},
+    query: request.query,
+    secret: resolvedSecret,
+    config: row.config as Record<string, unknown>,
+  });
+
+  if (!verification.valid) {
+    return {
+      success: false,
+      reason: verification.reason || "Challenge verification failed.",
+    };
+  }
+
+  const challenge = request.query["hub.challenge"];
+  return {
+    success: true,
+    challenge,
   };
 }

@@ -13,3 +13,4 @@ export * from "./automations";
 export * from "./teams";
 export * from "./ai-audit";
 export * from "./integrations";
+export * from "./messaging";

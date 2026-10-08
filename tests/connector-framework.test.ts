@@ -199,6 +199,7 @@ describe("Milestone 3.1 — Connector & Inbound Integration Framework Test Suite
       "0015_puzzling_swarm.sql",
       "0016_salty_the_liberteens.sql",
       "0017_minor_starfox.sql",
+      "0018_mute_boom_boom.sql",
     ];
 
     for (const file of migrationFiles) {

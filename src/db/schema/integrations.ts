@@ -41,6 +41,9 @@ export const INTEGRATION_CAPABILITIES = [
   "sync",
   "event_push",
   "event_pull",
+  "message_send",
+  "inbound_webhook",
+  "outbound_api",
 ] as const;
 export type IntegrationCapability = (typeof INTEGRATION_CAPABILITIES)[number];
 

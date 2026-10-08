@@ -66,6 +66,13 @@ export function IntegrationsTab({
   const [connectionName, setConnectionName] = useState("");
   const [connecting, setConnecting] = useState(false);
 
+  // WhatsApp specific config & credentials
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState("");
+  const [waWabaId, setWaWabaId] = useState("");
+  const [waVerifyToken, setWaVerifyToken] = useState("");
+  const [waAccessToken, setWaAccessToken] = useState("");
+  const [waAppSecret, setWaAppSecret] = useState("");
+
   const reloadIntegrations = async () => {
     try {
       const res = await fetch("/api/v1/integrations");
@@ -173,14 +180,39 @@ export function IntegrationsTab({
     if (!canConnect || !selectedProviderId || !connectionName.trim()) return;
     setConnecting(true);
     setActionMessage(null);
+
+    const selectedProvider = providers.find((p) => p.id === selectedProviderId);
+    const isWhatsApp = selectedProvider?.key === "whatsapp";
+
+    const payload: Record<string, unknown> = {
+      providerId: selectedProviderId,
+      name: connectionName.trim(),
+    };
+
+    if (isWhatsApp) {
+      payload.config = {
+        phoneNumberId: waPhoneNumberId.trim(),
+        wabaId: waWabaId.trim() || undefined,
+        verifyToken: waVerifyToken.trim() || undefined,
+      };
+
+      if (waAccessToken.trim()) {
+        payload.credentials = {
+          credentialType: "api_key",
+          secret: JSON.stringify({
+            accessToken: waAccessToken.trim(),
+            appSecret: waAppSecret.trim() || undefined,
+            verifyToken: waVerifyToken.trim() || undefined,
+          }),
+        };
+      }
+    }
+
     try {
       const res = await fetch("/api/v1/integrations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          providerId: selectedProviderId,
-          name: connectionName.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (res.ok && json.success) {
@@ -190,6 +222,11 @@ export function IntegrationsTab({
         });
         setIsConnectOpen(false);
         setConnectionName("");
+        setWaPhoneNumberId("");
+        setWaWabaId("");
+        setWaVerifyToken("");
+        setWaAccessToken("");
+        setWaAppSecret("");
         await reloadIntegrations();
       } else {
         setActionMessage({
@@ -346,6 +383,11 @@ export function IntegrationsTab({
                       {item.lastSuccessAt
                         ? new Date(item.lastSuccessAt).toLocaleString()
                         : "Never"}
+                      {Boolean(item.config?.phoneNumberId) && (
+                        <span className="text-slate-600 font-mono ml-2">
+                          (Phone ID: {String(item.config?.phoneNumberId)})
+                        </span>
+                      )}
                       {item.lastErrorCode && (
                         <span className="text-rose-600 ml-2">
                           (Error: {item.lastErrorCode})
@@ -491,12 +533,92 @@ export function IntegrationsTab({
               </Label>
               <Input
                 id="connName"
-                placeholder="e.g. Production Webhook Gateway"
+                placeholder="e.g. Production WhatsApp Gateway"
                 value={connectionName}
                 onChange={(e) => setConnectionName(e.target.value)}
                 className="text-xs"
               />
             </div>
+
+            {providers.find((p) => p.id === selectedProviderId)?.key === "whatsapp" && (
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <p className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
+                  WhatsApp Cloud API Credentials
+                </p>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="waPhoneId" className="text-xs font-medium text-slate-700">
+                    Phone Number ID <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    id="waPhoneId"
+                    placeholder="e.g. 100609346426456"
+                    value={waPhoneNumberId}
+                    onChange={(e) => setWaPhoneNumberId(e.target.value)}
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="waToken" className="text-xs font-medium text-slate-700">
+                    System User / Permanent Access Token <span className="text-rose-500">*</span>
+                  </Label>
+                  <Input
+                    id="waToken"
+                    type="password"
+                    placeholder="EAA..."
+                    value={waAccessToken}
+                    onChange={(e) => setWaAccessToken(e.target.value)}
+                    className="text-xs font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    Encrypted at rest using AES-256-GCM. Never logged or exposed.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="waSecret" className="text-xs font-medium text-slate-700">
+                    App Secret (for X-Hub Signature Verification)
+                  </Label>
+                  <Input
+                    id="waSecret"
+                    type="password"
+                    placeholder="Meta App Secret"
+                    value={waAppSecret}
+                    onChange={(e) => setWaAppSecret(e.target.value)}
+                    className="text-xs font-mono"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="waWaba" className="text-xs font-medium text-slate-700">
+                      WABA ID
+                    </Label>
+                    <Input
+                      id="waWaba"
+                      placeholder="Account ID"
+                      value={waWabaId}
+                      onChange={(e) => setWaWabaId(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="waVerify" className="text-xs font-medium text-slate-700">
+                      Webhook Verify Token
+                    </Label>
+                    <Input
+                      id="waVerify"
+                      placeholder="Custom Verify Token"
+                      value={waVerifyToken}
+                      onChange={(e) => setWaVerifyToken(e.target.value)}
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <DialogFooter className="gap-2">
